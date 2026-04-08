@@ -2,8 +2,8 @@ import { existsSync, unlinkSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import app from '../app.js';
 import { prisma } from '../lib/prisma.js';
+import { createImage, createJob } from './helpers.js';
 
-const mockPrisma = vi.mocked(prisma, true);
 const mockExistsSync = vi.mocked(existsSync, true);
 const mockUnlinkSync = vi.mocked(unlinkSync, true);
 
@@ -13,18 +13,8 @@ describe('GET /api/v1/images', () => {
   });
 
   it('should return a list of images', async () => {
-    mockPrisma.generatedImage.findMany.mockResolvedValue([
-      {
-        id: 'img-1',
-        filename: 'job-1.png',
-        path: './data/images/job-1.png',
-        sizeBytes: 1024,
-        width: 1024,
-        height: 1024,
-        jobId: 'job-1',
-        createdAt: new Date('2026-01-01T00:00:00Z'),
-      },
-    ]);
+    const job = await createJob({ prompt: 'test' });
+    const image = await createImage({ jobId: job.id, filename: 'test.png' });
 
     const res = await app.request('/api/v1/images');
 
@@ -32,19 +22,17 @@ describe('GET /api/v1/images', () => {
     const body = await res.json();
     expect(body).toHaveLength(1);
     expect(body[0]).toEqual({
-      id: 'img-1',
-      filename: 'job-1.png',
+      id: image.id,
+      filename: 'test.png',
       sizeBytes: 1024,
       width: 1024,
       height: 1024,
-      jobId: 'job-1',
-      createdAt: '2026-01-01T00:00:00.000Z',
+      jobId: job.id,
+      createdAt: image.createdAt.toISOString(),
     });
   });
 
   it('should return empty array when no images', async () => {
-    mockPrisma.generatedImage.findMany.mockResolvedValue([]);
-
     const res = await app.request('/api/v1/images');
 
     expect(res.status).toBe(200);
@@ -83,33 +71,30 @@ describe('DELETE /api/v1/images/:id', () => {
   });
 
   it('should delete image from disk and DB', async () => {
-    mockPrisma.generatedImage.findUnique.mockResolvedValue({
-      id: 'img-1',
-      filename: 'job-1.png',
-      path: './data/images/job-1.png',
-      sizeBytes: 1024,
-      width: 1024,
-      height: 1024,
-      jobId: 'job-1',
-      createdAt: new Date(),
+    const job = await createJob({ prompt: 'test' });
+    const image = await createImage({
+      jobId: job.id,
+      filename: 'test.png',
+      path: '/tmp/test-images/test.png',
     });
-    // biome-ignore lint/suspicious/noExplicitAny: mock return type
-    mockPrisma.generatedImage.delete.mockResolvedValue({} as any);
     mockExistsSync.mockReturnValue(true);
 
-    const res = await app.request('/api/v1/images/img-1', { method: 'DELETE' });
+    const res = await app.request(`/api/v1/images/${image.id}`, { method: 'DELETE' });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ message: 'Image deleted' });
-    expect(mockUnlinkSync).toHaveBeenCalledWith('./data/images/job-1.png');
-    expect(mockPrisma.generatedImage.delete).toHaveBeenCalledWith({ where: { id: 'img-1' } });
+    expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/test-images/test.png');
+
+    // Verify image was deleted from database
+    const deletedImage = await prisma.generatedImage.findUnique({
+      where: { id: image.id },
+    });
+    expect(deletedImage).toBeNull();
   });
 
   it('should return 404 for non-existent image', async () => {
-    mockPrisma.generatedImage.findUnique.mockResolvedValue(null);
-
-    const res = await app.request('/api/v1/images/nonexistent', { method: 'DELETE' });
+    const res = await app.request('/api/v1/images/nonexistent-id-12345', { method: 'DELETE' });
 
     expect(res.status).toBe(404);
   });

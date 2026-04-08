@@ -1,29 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import app from '../app.js';
 import { prisma } from '../lib/prisma.js';
 
-const mockPrisma = vi.mocked(prisma, true);
-
 describe('POST /api/v1/generate', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should create a job and return 202 with jobId', async () => {
-    mockPrisma.generationJob.create.mockResolvedValue({
-      id: 'test-job-id',
-      prompt: 'a sunset',
-      negativePrompt: null,
-      width: 1024,
-      height: 1024,
-      steps: 20,
-      status: 'PENDING',
-      vastInstanceId: null,
-      errorMessage: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
     const res = await app.request('/api/v1/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -32,27 +12,21 @@ describe('POST /api/v1/generate', () => {
 
     expect(res.status).toBe(202);
     const body = await res.json();
-    expect(body).toEqual({ jobId: 'test-job-id' });
-    expect(mockPrisma.generationJob.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ prompt: 'a sunset' }),
+    expect(body).toHaveProperty('jobId');
+
+    // Verify job was created in database
+    const job = await prisma.generationJob.findUnique({
+      where: { id: body.jobId },
     });
+    expect(job).not.toBeNull();
+    expect(job?.prompt).toBe('a sunset');
+    expect(job?.status).toBe('PENDING');
+    expect(job?.width).toBe(1024);
+    expect(job?.height).toBe(1024);
+    expect(job?.steps).toBe(20);
   });
 
   it('should accept all optional parameters', async () => {
-    mockPrisma.generationJob.create.mockResolvedValue({
-      id: 'test-job-id-2',
-      prompt: 'a cat',
-      negativePrompt: 'blurry',
-      width: 512,
-      height: 768,
-      steps: 30,
-      status: 'PENDING',
-      vastInstanceId: null,
-      errorMessage: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
     const res = await app.request('/api/v1/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,15 +40,16 @@ describe('POST /api/v1/generate', () => {
     });
 
     expect(res.status).toBe(202);
-    expect(mockPrisma.generationJob.create).toHaveBeenCalledWith({
-      data: {
-        prompt: 'a cat',
-        negativePrompt: 'blurry',
-        width: 512,
-        height: 768,
-        steps: 30,
-      },
+    const body = await res.json();
+
+    const job = await prisma.generationJob.findUnique({
+      where: { id: body.jobId },
     });
+    expect(job?.prompt).toBe('a cat');
+    expect(job?.negativePrompt).toBe('blurry');
+    expect(job?.width).toBe(512);
+    expect(job?.height).toBe(768);
+    expect(job?.steps).toBe(30);
   });
 
   it('should return 422 for empty prompt', async () => {
