@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model GenerationJob {
+  id             String    @id @default(cuid())
+  prompt         String
+  negativePrompt String?
+  width          Int       @default(512)
+  height         Int       @default(512)
+  steps          Int       @default(20)
+  status         JobStatus @default(PENDING)
+  vastInstanceId String?
+  errorMessage   String?
+  image          GeneratedImage?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+enum JobStatus {
+  PENDING
+  PROVISIONING
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+model GeneratedImage {
+  id        String        @id @default(cuid())
+  filename  String        @unique
+  path      String
+  sizeBytes Int
+  width     Int
+  height    Int
+  jobId     String        @unique
+  job       GenerationJob @relation(fields: [jobId], references: [id])
+  createdAt DateTime      @default(now())
+}

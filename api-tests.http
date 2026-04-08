@@ -1,0 +1,141 @@
+# Hono API Test Suite
+# Utilise l'extension VS Code REST Client pour exécuter ces requêtes
+
+@baseUrl = http://localhost:3000
+@userId = cmkqiu8wx0000d0msvqzffddu
+//@userId = cmkqiufhf0001d0ms9zlwwrqz
+### Health Check
+GET {{baseUrl}}/
+
+###
+
+### ============================================================================
+### USERS API - Tests complets
+### ============================================================================
+
+### Lister tous les utilisateurs (avec pagination par défaut)
+GET {{baseUrl}}/api/v1/users
+
+###
+
+### Lister les utilisateurs (page 1, limite 5)
+GET {{baseUrl}}/api/v1/users?page=1&limit=5
+
+###
+
+### Récupérer un utilisateur par ID (remplacez l'ID par un ID valide)
+GET {{baseUrl}}/api/v1/users/{{userId}}
+
+###
+
+### Créer un nouvel utilisateur
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "name": "John Doe"
+}
+
+###
+
+### Créer un utilisateur (email seulement)
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "email": "jane.smith@example.com"
+}
+
+###
+
+### Mettre à jour un utilisateur (remplacez l'ID par un ID valide)
+PUT {{baseUrl}}/api/v1/users/{{userId}}
+Content-Type: application/json
+
+{
+  "name": "John Updated",
+  "email": "john.updated@example.com"
+}
+
+###
+
+### Mettre à jour partiellement un utilisateur (seulement le nom)
+PUT {{baseUrl}}/api/v1/users/{{{userId}}}
+Content-Type: application/json
+
+{
+  "name": "John Smith"
+}
+
+###
+
+### Supprimer un utilisateur (remplacez l'ID par un ID valide)
+DELETE {{baseUrl}}/api/v1/users/{{{userId}}}
+
+###
+
+### ============================================================================
+### ERROR TESTS - Validation et erreurs
+### ============================================================================
+
+### Erreur de validation - Email invalide
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "name": "Test User"
+}
+
+###
+
+### Erreur de validation - Nom trop court
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "name": "A"
+}
+
+###
+
+### Erreur 404 - Utilisateur non trouvé
+GET {{baseUrl}}/api/v1/users/cm0q8x8qk0000invalid123
+
+###
+
+### Erreur 404 - Route non trouvée
+GET {{baseUrl}}/api/v1/unknown
+
+###
+
+### Erreur 404 - ID invalide (pas un CUID)
+GET {{baseUrl}}/api/v1/users/123
+
+###
+
+### ============================================================================
+### PAGINATION TESTS
+### ============================================================================
+
+### Pagination - Page 2
+GET {{baseUrl}}/api/v1/users?page=2&limit=3
+
+###
+
+### Pagination - Limite maximale
+GET {{baseUrl}}/api/v1/users?page=1&limit=100
+
+###
+
+### Pagination - Limite invalide (trop grande)
+GET {{baseUrl}}/api/v1/users?page=1&limit=101
+
+###
+
+### Pagination - Page invalide
+GET {{baseUrl}}/api/v1/users?page=0&limit=10
+
+###

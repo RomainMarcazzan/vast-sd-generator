@@ -1,0 +1,30 @@
+# Dépendances locales
+node_modules
+
+# Build local (on rebuild dans Docker)
+dist
+
+# Git
+.git
+.gitignore
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.*
+.envrc
+
+# Docs / dev only
+README.md
+api-tests.http
+opencode.jsonc
+
+# Tooling
+biome.json
+
+# OS
+.DS_Store

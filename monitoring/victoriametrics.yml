@@ -1,0 +1,25 @@
+# Configuration de scraping pour VictoriaMetrics
+# Format compatible Prometheus pour VictoriaMetrics v1.139+
+# Documentation: https://docs.victoriametrics.com/single-server-victoriametrics/#prometheus-scraping
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'sd-generator-api-cluster'
+    replica: 'rpi-3b'
+
+scrape_configs:
+  - job_name: 'sd-generator-api'
+    static_configs:
+      - targets: ['sd-generator-api:3000']
+        labels:
+          instance: 'sd-generator-api'
+          env: 'production'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    # Optimisations pour RPi - limiter la cardinalité
+    series_limit: 10000
+    sample_limit: 100000

@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sd-generator-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - sd_generator_postgres_data:/var/lib/postgresql/data
+
+  sd-generator-api:
+    build: .
+    container_name: sd-generator-api
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - ${IMAGES_STORAGE_PATH:-/data/images}:${IMAGES_STORAGE_PATH:-/data/images}
+
+  # VictoriaMetrics - stockage des métriques (ultra léger pour RPi)
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.139.0
+    container_name: victoriametrics
+    restart: unless-stopped
+    command:
+      - '-storageDataPath=/storage'
+      - '-retentionPeriod=7d'
+      - '-promscrape.config=/etc/victoriametrics/prometheus.yml'
+      - '-promscrape.config.strictParse=false'
+      - '-search.maxQueryDuration=30s'
+      - '-search.maxPointsPerTimeseries=30000'
+      - '-memory.allowedPercent=40'
+    volumes:
+      - vm_data:/storage
+      - ./monitoring/victoriametrics.yml:/etc/victoriametrics/prometheus.yml:ro
+    ports:
+      - '8428:8428'
+    depends_on:
+      - sd-generator-api
+
+  # Grafana - visualisation des métriques
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ALERTING_ENABLED=false
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_SERVER_ROOT_URL=https://grafana.code-booking.fr
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - '127.0.0.1:3001:3000'
+    depends_on:
+      - victoriametrics
+
+volumes:
+  sd_generator_postgres_data:
+  vm_data:
+  grafana_data:
