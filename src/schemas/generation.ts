@@ -8,6 +8,7 @@ export const generateRequestSchema = z.object({
   width: z.number().int().min(256).max(2048).default(1024),
   height: z.number().int().min(256).max(2048).default(1024),
   steps: z.number().int().min(1).max(100).default(20),
+  instanceId: z.string().optional().describe('Optional persistent instance ID to reuse'),
 });
 
 // --- Response schemas ---

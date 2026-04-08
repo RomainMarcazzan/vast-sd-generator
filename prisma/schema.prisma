@@ -14,18 +14,20 @@ datasource db {
 }
 
 model GenerationJob {
-  id             String    @id @default(cuid())
+  id             String         @id @default(cuid())
   prompt         String
   negativePrompt String?
-  width          Int       @default(512)
-  height         Int       @default(512)
-  steps          Int       @default(20)
-  status         JobStatus @default(PENDING)
+  width          Int            @default(512)
+  height         Int            @default(512)
+  steps          Int            @default(20)
+  status         JobStatus      @default(PENDING)
   vastInstanceId String?
   errorMessage   String?
   image          GeneratedImage?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  instanceId     String?        // Référence à une instance persistante (optionnel)
+  instance       VastInstance?  @relation(fields: [instanceId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 enum JobStatus {
@@ -46,4 +48,24 @@ model GeneratedImage {
   jobId     String        @unique
   job       GenerationJob @relation(fields: [jobId], references: [id])
   createdAt DateTime      @default(now())
+}
+
+model VastInstance {
+  id             String          @id @default(cuid())
+  vastInstanceId String          @unique // ID de l'instance chez Vast.ai
+  status         InstanceStatus  @default(RUNNING)
+  host           String?         // IP publique
+  port           String?         // Port mappé
+  gpuName        String?         // Nom du GPU
+  costPerHour    Float?          // Coût horaire
+  lastUsedAt     DateTime        @default(now())
+  expiresAt      DateTime        // Date d'expiration auto (timeout)
+  jobs           GenerationJob[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+enum InstanceStatus {
+  RUNNING
+  DESTROYED
 }

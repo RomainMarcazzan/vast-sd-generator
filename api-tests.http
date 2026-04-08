@@ -1,17 +1,25 @@
 # SD Generator API — Test Suite
 # Utilise l'extension VS Code REST Client pour exécuter ces requêtes
 #
-# Flow typique :
+# Flow typique (mode auto - instance temporaire) :
 #   1. POST /generate     → soumet un prompt, récupère un jobId
 #   2. GET /jobs/:id      → poll jusqu'à status COMPLETED (ou FAILED)
 #   3. GET /images/:file  → récupère l'image générée
 #
+# Flow typique (mode persistant - économique pour itérations) :
+#   1. POST /instances              → crée une instance persistante
+#   2. POST /generate               → avec instanceId, génère image #1
+#   3. POST /generate               → avec instanceId, génère image #2
+#   ... (itérez autant que vous voulez)
+#   4. DELETE /instances/:id        → détruit l'instance (arrête la facturation)
+#
 # ⚠️  POST /generate loue un GPU sur Vast.ai (~$0.10-0.30/h)
-#     L'instance est détruite automatiquement après génération,
-#     mais vérifiez votre dashboard Vast.ai en cas d'erreur.
+#     En mode persistant, l'instance reste active 30 min puis auto-destruction
+#     Vérifiez votre dashboard Vast.ai : https://cloud.vast.ai/instances/
 
 @baseUrl = http://localhost:3000
 @jobId = REPLACE_WITH_JOB_ID
+@instanceId = REPLACE_WITH_INSTANCE_ID
 
 ### ============================================================================
 ### HEALTH
@@ -23,11 +31,39 @@ GET {{baseUrl}}/health
 ###
 
 ### ============================================================================
+### INSTANCES — Gestion des instances Vast.ai persistantes
+### ============================================================================
+
+### Lister les instances actives
+GET {{baseUrl}}/api/v1/instances
+
+###
+
+### Créer une instance persistante (pour itérations multiples)
+# Retourne { id, vastInstanceId, host, port, expiresAt }
+# L'instance s'auto-détruit après 30 min d'inactivité
+POST {{baseUrl}}/api/v1/instances
+Content-Type: application/json
+
+{
+  "label": "Test session"
+}
+
+###
+
+### Détruire une instance (arrête la facturation immédiatement)
+# Remplacez :id par l'ID retourné lors de la création
+DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
+
+###
+
+### ============================================================================
 ### GENERATION — Soumettre un job de génération d'image
 ### ============================================================================
 
-### Générer une image (paramètres par défaut : 1024x1024, 20 steps)
+### Générer une image (mode auto - instance temporaire)
 # Retourne { jobId } immédiatement — la génération tourne en background
+# L'instance est créée puis détruite automatiquement
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
@@ -37,7 +73,23 @@ Content-Type: application/json
 
 ###
 
-### Générer une image avec tous les paramètres
+### Générer une image (mode persistant - réutilise une instance)
+# Utilisez instanceId pour réutiliser une instance existante
+# Économique quand vous itérez sur plusieurs images
+POST {{baseUrl}}/api/v1/generate
+Content-Type: application/json
+
+{
+  "prompt": "a cat wearing a top hat, oil painting style",
+  "width": 512,
+  "height": 512,
+  "steps": 15,
+  "instanceId": "{{instanceId}}"
+}
+
+###
+
+### Générer une image avec tous les paramètres (mode auto)
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
@@ -134,5 +186,51 @@ GET {{baseUrl}}/api/v1/images/nonexistent.png
 
 ### Erreur 404 — Route inconnue
 GET {{baseUrl}}/api/v1/unknown
+
+###
+
+### ============================================================================
+### EXEMPLE COMPLET — Session de génération avec instance persistante
+### ============================================================================
+
+### 1. Créer une instance persistante
+# @name createInstance
+POST {{baseUrl}}/api/v1/instances
+Content-Type: application/json
+
+{}
+
+###
+
+### 2. Générer image #1 avec l'instance (récupérez l'id de la réponse précédente)
+# @name generate1
+POST {{baseUrl}}/api/v1/generate
+Content-Type: application/json
+
+{
+  "prompt": "a sunset over mountains",
+  "instanceId": "cmnqf3xxj0000xwmsg3hxl808"
+}
+
+###
+
+### 3. Générer image #2 avec la même instance
+POST {{baseUrl}}/api/v1/generate
+Content-Type: application/json
+
+{
+  "prompt": "a sunset over ocean",
+  "instanceId": "cmnqf3xxj0000xwmsg3hxl808"
+}
+
+###
+
+### 4. Vérifier le status des jobs
+GET {{baseUrl}}/api/v1/jobs/REPLACE_WITH_JOB_ID_1
+
+###
+
+### 5. Détruire l'instance quand vous avez fini
+DELETE {{baseUrl}}/api/v1/instances/cmnqf3xxj0000xwmsg3hxl808
 
 ###

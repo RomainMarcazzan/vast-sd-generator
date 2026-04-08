@@ -8,6 +8,7 @@ import { defaultHook, onErrorHandler } from './lib/error-handler.js';
 import { metricsHandler, metricsMiddleware } from './lib/metrics.js';
 import generate from './routes/generate/index.js';
 import images from './routes/images/index.js';
+import instances from './routes/instances/index.js';
 import jobs from './routes/jobs/index.js';
 
 // Define types for environment bindings and context variables
@@ -71,6 +72,7 @@ app.get('/metrics', async (c) => {
 app.route('/api/v1/generate', generate);
 app.route('/api/v1/jobs', jobs);
 app.route('/api/v1/images', images);
+app.route('/api/v1/instances', instances);
 
 // Protect Swagger UI with Basic Auth
 const swaggerAuth = basicAuth({ username: env.SWAGGER_USER, password: env.SWAGGER_PASSWORD });
