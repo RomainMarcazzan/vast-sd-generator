@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import app from '../app.js';
 import { prisma } from '../lib/prisma.js';
-import { createJob } from './helpers.js';
 
 // Mock Vast.ai pour éviter de vraiment créer des instances
 vi.mock('../lib/vast.js', () => ({
