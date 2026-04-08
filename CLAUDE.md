@@ -51,7 +51,9 @@ Generation is **asynchronous**: `POST /generate` returns immediately with a `job
 - `npm run typecheck` — TypeScript check without emitting
 
 ### Testing
-- `npm run test` — Run all tests once with Vitest
+- `npm run test` — Run tests with Docker (PostgreSQL 17 test DB + test runner)
+- `npm run test:local` — Run tests against local test DB (port 5433)
+- `npm run test:run` — Run tests directly (used by CI/docker)
 - `npm run test:watch` — Run tests in watch mode (auto-reload)
 
 ### Code Quality
@@ -95,7 +97,8 @@ src/
 │       ├── routes.ts
 │       └── definitions.ts
 └── __tests__/                  # Vitest test suite
-    ├── setup.ts                # Global mocks (Prisma, Vast.ai, fs)
+    ├── setup.ts                # Test database setup (migrations, cleanup)
+    ├── helpers.ts              # Test helpers (createJob, createImage)
     ├── generate.test.ts        # Tests for POST /api/v1/generate
     ├── jobs.test.ts            # Tests for GET /api/v1/jobs/:id
     └── images.test.ts          # Tests for /api/v1/images endpoints
@@ -167,32 +170,45 @@ The txt2img workflow JSON is templated in `src/lib/vast.ts`.
 ## Key Patterns
 
 ### Testing
-Tests use Vitest with Hono's `app.request()` method (in-memory, no HTTP server needed).
+Tests use Vitest with a **real PostgreSQL database** and Hono's `app.request()` method (in-memory HTTP, no server needed).
 
 **Setup:**
-- `vitest.config.ts` configures the test environment with `setupFiles: ['./src/__tests__/setup.ts']`
-- `setup.ts` provides global mocks for:
-  - **Prisma** — all DB calls are mocked (no real PostgreSQL needed)
-  - **Vast.ai** — API calls return fake data (no real GPU instances)
-  - **fs** — file operations are mocked (no real disk writes)
+- `docker-compose.test.yml` — PostgreSQL 17 test database (port 5433) + test runner
+- `vitest.config.ts` — Test environment configuration
+- `src/__tests__/setup.ts` — Database setup: runs migrations, cleans tables before each test
+- `src/__tests__/helpers.ts` — Test helpers for creating test data
+
+**Why real database?**
+- Tests real SQL queries (no mocks)
+- No TypeScript issues with Prisma complex types
+- More reliable and maintainable
+- Fast enough with PostgreSQL on tmpfs (RAM)
 
 **Writing tests:**
 ```typescript
+import { describe, it, expect } from 'vitest';
 import app from '../app.js';
 import { prisma } from '../lib/prisma.js';
+import { createJob, createImage } from './helpers.js';
 
-const mockPrisma = vi.mocked(prisma, true);
+describe('POST /api/v1/generate', () => {
+  it('should create a job', async () => {
+    const res = await app.request('/api/v1/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: 'test' }),
+    });
 
-it('should create a job', async () => {
-  mockPrisma.generationJob.create.mockResolvedValue({ id: 'test-id', ... });
-  
-  const res = await app.request('/api/v1/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: 'test' }),
+    expect(res.status).toBe(202);
+    const body = await res.json();
+
+    // Verify in real database
+    const job = await prisma.generationJob.findUnique({
+      where: { id: body.jobId },
+    });
+    expect(job).not.toBeNull();
+    expect(job?.prompt).toBe('test');
   });
-  
-  expect(res.status).toBe(202);
 });
 ```
 
@@ -251,6 +267,7 @@ IMAGES_STORAGE_PATH=/data/images
 Same pattern as the base template:
 - Multi-stage Dockerfile (deps → build → production)
 - **`docker-compose.yml`** — dev: PostgreSQL only (port 5432 exposed)
+- **`docker-compose.test.yml`** — test: PostgreSQL 17 (port 5433) + test runner
 - **`docker-compose.prod.yml`** — prod: Hono API + PostgreSQL + VictoriaMetrics + Grafana
 - Container names prefixed with `sd-generator-` to avoid collisions
 - Images storage directory must be mounted as a Docker volume (prod):
