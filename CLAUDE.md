@@ -134,8 +134,9 @@ model GeneratedImage {
 
 Key operations:
 - `findCheapOffer()` — queries Vast.ai for cheapest available GPU with `reliability >= 0.95`
-- `createInstance(offerId)` — creates instance with ComfyUI Docker image, exposes port 8188
+- `createInstance(offerId)` — creates instance with ComfyUI Docker image (`vastai/comfy`), exposes port 18188
 - `pollUntilReady(instanceId)` — polls every 5s until instance status is `running` (timeout: 5min)
+- `getInstanceEndpoint(instance)` — extracts public IP and mapped port from instance data
 - `generateImage(instanceHost, instancePort, params)` — calls ComfyUI HTTP API with the prompt
 - `downloadImage(url)` — fetches image binary from the instance
 - `destroyInstance(instanceId)` — destroys the instance after image is downloaded
@@ -144,8 +145,9 @@ All Vast.ai API calls use `Authorization: Bearer ${VAST_AI_API_KEY}`.
 
 ### ComfyUI Integration
 
-The Vast.ai instance runs **ComfyUI** (Docker image: `ghcr.io/ai-dock/comfyui:latest`).
-ComfyUI exposes a REST API on port 8188:
+The Vast.ai instance runs **ComfyUI** (Docker image: `vastai/comfy:latest`, official Vast.ai template).
+A provisioning script auto-downloads SDXL (`sd_xl_base_1.0.safetensors`) on first boot.
+ComfyUI exposes a REST API on internal port 18188 (mapped externally by Vast.ai):
 - `POST /prompt` — submit a generation workflow
 - `GET /history/{prompt_id}` — poll for completion and get output filenames
 - `GET /view?filename=...` — download the generated image
@@ -208,13 +210,17 @@ IMAGES_STORAGE_PATH=/data/images
 
 Same pattern as the base template:
 - Multi-stage Dockerfile (deps → build → production)
-- `docker-compose.yml` includes the Hono API + PostgreSQL + VictoriaMetrics + Grafana
-- Images storage directory must be mounted as a Docker volume:
+- **`docker-compose.yml`** — dev: PostgreSQL only (port 5432 exposed)
+- **`docker-compose.prod.yml`** — prod: Hono API + PostgreSQL + VictoriaMetrics + Grafana
+- Container names prefixed with `sd-generator-` to avoid collisions
+- Images storage directory must be mounted as a Docker volume (prod):
   ```yaml
   volumes:
     - /data/images:/data/images
   ```
-- GitHub Actions CI/CD: push to `main` → SSH into RPi → `git pull` + `docker compose up -d --build`
+- Dev: `docker compose up -d` then `npm run dev`
+- Prod: `docker compose -f docker-compose.prod.yml up -d --build`
+- GitHub Actions CI/CD: push to `main` → SSH into RPi → `git pull` + `docker compose -f docker-compose.prod.yml up -d --build`
 - RPi SSH: `ssh -p 2222 romain@rpi.code-booking.fr`
 
 ## API Documentation

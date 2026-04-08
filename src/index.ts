@@ -8,6 +8,9 @@ import { logger } from 'hono/logger';
 import { env } from './config/env.js';
 import { defaultHook, onErrorHandler } from './lib/error-handler.js';
 import { metricsHandler, metricsMiddleware } from './lib/metrics.js';
+import generate from './routes/generate/index.js';
+import images from './routes/images/index.js';
+import jobs from './routes/jobs/index.js';
 
 // Define types for environment bindings and context variables
 type Bindings = {
@@ -67,6 +70,9 @@ app.get('/metrics', async (c) => {
 });
 
 // API routes
+app.route('/api/v1/generate', generate);
+app.route('/api/v1/jobs', jobs);
+app.route('/api/v1/images', images);
 
 // Protect Swagger UI with Basic Auth
 const swaggerAuth = basicAuth({ username: env.SWAGGER_USER, password: env.SWAGGER_PASSWORD });
