@@ -1,6 +1,20 @@
 import { execSync } from 'node:child_process';
-import { afterAll, beforeAll, beforeEach } from 'vitest';
+import { afterAll, beforeAll, beforeEach, vi } from 'vitest';
 import { prisma } from '../lib/prisma.js';
+
+// Mock fs operations for image tests
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(true),
+    mkdirSync: vi.fn(),
+    writeFileSync: vi.fn(),
+    readFileSync: vi.fn().mockReturnValue(Buffer.from('fake-png-data')),
+    unlinkSync: vi.fn(),
+    statSync: vi.fn().mockReturnValue({ size: 1024 }),
+  };
+});
 
 // Setup: run migrations once before all tests
 beforeAll(async () => {

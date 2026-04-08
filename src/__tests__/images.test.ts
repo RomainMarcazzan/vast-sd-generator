@@ -1,11 +1,8 @@
-import { existsSync, unlinkSync } from 'node:fs';
+import * as fs from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import app from '../app.js';
 import { prisma } from '../lib/prisma.js';
 import { createImage, createJob } from './helpers.js';
-
-const mockExistsSync = vi.mocked(existsSync, true);
-const mockUnlinkSync = vi.mocked(unlinkSync, true);
 
 describe('GET /api/v1/images', () => {
   beforeEach(() => {
@@ -47,7 +44,7 @@ describe('GET /api/v1/images/:filename', () => {
   });
 
   it('should serve an image file', async () => {
-    mockExistsSync.mockReturnValue(true);
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
 
     const res = await app.request('/api/v1/images/job-1.png');
 
@@ -57,7 +54,7 @@ describe('GET /api/v1/images/:filename', () => {
   });
 
   it('should return 404 for missing image file', async () => {
-    mockExistsSync.mockReturnValue(false);
+    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
     const res = await app.request('/api/v1/images/nonexistent.png');
 
@@ -77,14 +74,15 @@ describe('DELETE /api/v1/images/:id', () => {
       filename: 'test.png',
       path: '/tmp/test-images/test.png',
     });
-    mockExistsSync.mockReturnValue(true);
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const unlinkSpy = vi.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
 
     const res = await app.request(`/api/v1/images/${image.id}`, { method: 'DELETE' });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ message: 'Image deleted' });
-    expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/test-images/test.png');
+    expect(unlinkSpy).toHaveBeenCalledWith('/tmp/test-images/test.png');
 
     // Verify image was deleted from database
     const deletedImage = await prisma.generatedImage.findUnique({
