@@ -7,6 +7,8 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "precommit": "npm run check && npm run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "format": "biome format --write .",
@@ -30,6 +32,7 @@
     "@types/node": "^20.11.17",
     "@types/pg": "^8.16.0",
     "tsx": "^4.7.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.3"
   }
 }

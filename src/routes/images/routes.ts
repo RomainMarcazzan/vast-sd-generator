@@ -2,10 +2,11 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { env } from '../../config/env.js';
+import { defaultHook } from '../../lib/error-handler.js';
 import { prisma } from '../../lib/prisma.js';
 import { deleteImageRoute, getImageRoute, listImagesRoute } from './definitions.js';
 
-const app = new OpenAPIHono();
+const app = new OpenAPIHono({ defaultHook });
 
 app.openapi(listImagesRoute, async (c) => {
   const images = await prisma.generatedImage.findMany({

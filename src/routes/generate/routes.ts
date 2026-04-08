@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { env } from '../../config/env.js';
+import { defaultHook } from '../../lib/error-handler.js';
 import { prisma } from '../../lib/prisma.js';
 import {
   createInstance,
@@ -14,7 +15,7 @@ import {
 } from '../../lib/vast.js';
 import { generateRoute } from './definitions.js';
 
-const app = new OpenAPIHono();
+const app = new OpenAPIHono({ defaultHook });
 
 function elapsed(start: number): string {
   const ms = Date.now() - start;
