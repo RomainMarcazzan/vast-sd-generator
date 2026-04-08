@@ -1,141 +1,138 @@
-# Hono API Test Suite
+# SD Generator API — Test Suite
 # Utilise l'extension VS Code REST Client pour exécuter ces requêtes
+#
+# Flow typique :
+#   1. POST /generate     → soumet un prompt, récupère un jobId
+#   2. GET /jobs/:id      → poll jusqu'à status COMPLETED (ou FAILED)
+#   3. GET /images/:file  → récupère l'image générée
+#
+# ⚠️  POST /generate loue un GPU sur Vast.ai (~$0.10-0.30/h)
+#     L'instance est détruite automatiquement après génération,
+#     mais vérifiez votre dashboard Vast.ai en cas d'erreur.
 
 @baseUrl = http://localhost:3000
-@userId = cmkqiu8wx0000d0msvqzffddu
-//@userId = cmkqiufhf0001d0ms9zlwwrqz
-### Health Check
-GET {{baseUrl}}/
+@jobId = REPLACE_WITH_JOB_ID
+
+### ============================================================================
+### HEALTH
+### ============================================================================
+
+### Health check
+GET {{baseUrl}}/health
 
 ###
 
 ### ============================================================================
-### USERS API - Tests complets
+### GENERATION — Soumettre un job de génération d'image
 ### ============================================================================
 
-### Lister tous les utilisateurs (avec pagination par défaut)
-GET {{baseUrl}}/api/v1/users
-
-###
-
-### Lister les utilisateurs (page 1, limite 5)
-GET {{baseUrl}}/api/v1/users?page=1&limit=5
-
-###
-
-### Récupérer un utilisateur par ID (remplacez l'ID par un ID valide)
-GET {{baseUrl}}/api/v1/users/{{userId}}
-
-###
-
-### Créer un nouvel utilisateur
-POST {{baseUrl}}/api/v1/users
+### Générer une image (paramètres par défaut : 1024x1024, 20 steps)
+# Retourne { jobId } immédiatement — la génération tourne en background
+POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
-  "email": "john.doe@example.com",
-  "name": "John Doe"
+  "prompt": "a beautiful sunset over the ocean, photorealistic, 4k"
 }
 
 ###
 
-### Créer un utilisateur (email seulement)
-POST {{baseUrl}}/api/v1/users
+### Générer une image avec tous les paramètres
+POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
-  "email": "jane.smith@example.com"
+  "prompt": "a cyberpunk city at night, neon lights, rain, detailed",
+  "negativePrompt": "blurry, low quality, distorted",
+  "width": 1024,
+  "height": 768,
+  "steps": 30
 }
 
 ###
 
-### Mettre à jour un utilisateur (remplacez l'ID par un ID valide)
-PUT {{baseUrl}}/api/v1/users/{{userId}}
+### Générer une image en 512x512 (plus rapide, moins de VRAM)
+POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
-  "name": "John Updated",
-  "email": "john.updated@example.com"
+  "prompt": "a cat wearing a top hat, oil painting style",
+  "width": 512,
+  "height": 512,
+  "steps": 15
 }
-
-###
-
-### Mettre à jour partiellement un utilisateur (seulement le nom)
-PUT {{baseUrl}}/api/v1/users/{{{userId}}}
-Content-Type: application/json
-
-{
-  "name": "John Smith"
-}
-
-###
-
-### Supprimer un utilisateur (remplacez l'ID par un ID valide)
-DELETE {{baseUrl}}/api/v1/users/{{{userId}}}
 
 ###
 
 ### ============================================================================
-### ERROR TESTS - Validation et erreurs
+### JOBS — Suivre l'état d'un job
 ### ============================================================================
 
-### Erreur de validation - Email invalide
-POST {{baseUrl}}/api/v1/users
+### Récupérer le status d'un job
+# Status possibles : PENDING → PROVISIONING → GENERATING → COMPLETED / FAILED
+# Quand COMPLETED, le champ imageUrl contient l'URL de l'image
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}
+
+###
+
+### ============================================================================
+### IMAGES — Lister, récupérer et supprimer des images
+### ============================================================================
+
+### Lister toutes les images générées (les plus récentes en premier)
+GET {{baseUrl}}/api/v1/images
+
+###
+
+### Récupérer une image par son filename (retourne le fichier PNG)
+# Le filename est de la forme {jobId}.png
+GET {{baseUrl}}/api/v1/images/{{jobId}}.png
+
+###
+
+### Supprimer une image (par son ID, pas son filename)
+# Supprime le fichier sur disque ET l'enregistrement en DB
+# DELETE {{baseUrl}}/api/v1/images/REPLACE_WITH_IMAGE_ID
+
+###
+
+### ============================================================================
+### ERREURS — Cas limites et validation
+### ============================================================================
+
+### Erreur 422 — Prompt vide
+POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
-  "email": "invalid-email",
-  "name": "Test User"
+  "prompt": ""
 }
 
 ###
 
-### Erreur de validation - Nom trop court
-POST {{baseUrl}}/api/v1/users
+### Erreur 422 — Dimensions invalides
+POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
-  "email": "test@example.com",
-  "name": "A"
+  "prompt": "test",
+  "width": 100,
+  "height": 5000
 }
 
 ###
 
-### Erreur 404 - Utilisateur non trouvé
-GET {{baseUrl}}/api/v1/users/cm0q8x8qk0000invalid123
+### Erreur 404 — Job inexistant
+GET {{baseUrl}}/api/v1/jobs/nonexistent_id
 
 ###
 
-### Erreur 404 - Route non trouvée
+### Erreur 404 — Image inexistante
+GET {{baseUrl}}/api/v1/images/nonexistent.png
+
+###
+
+### Erreur 404 — Route inconnue
 GET {{baseUrl}}/api/v1/unknown
-
-###
-
-### Erreur 404 - ID invalide (pas un CUID)
-GET {{baseUrl}}/api/v1/users/123
-
-###
-
-### ============================================================================
-### PAGINATION TESTS
-### ============================================================================
-
-### Pagination - Page 2
-GET {{baseUrl}}/api/v1/users?page=2&limit=3
-
-###
-
-### Pagination - Limite maximale
-GET {{baseUrl}}/api/v1/users?page=1&limit=100
-
-###
-
-### Pagination - Limite invalide (trop grande)
-GET {{baseUrl}}/api/v1/users?page=1&limit=101
-
-###
-
-### Pagination - Page invalide
-GET {{baseUrl}}/api/v1/users?page=0&limit=10
 
 ###
