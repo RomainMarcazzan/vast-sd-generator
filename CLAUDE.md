@@ -50,6 +50,10 @@ Generation is **asynchronous**: `POST /generate` returns immediately with a `job
 - `npm start` — Run compiled production build
 - `npm run typecheck` — TypeScript check without emitting
 
+### Testing
+- `npm run test` — Run all tests once with Vitest
+- `npm run test:watch` — Run tests in watch mode (auto-reload)
+
 ### Code Quality
 - `npm run check` — Biome linter + formatter check
 - `npm run check:fix` — Auto-fix formatting and linting
@@ -66,7 +70,8 @@ Generation is **asynchronous**: `POST /generate` returns immediately with a `job
 ### Core Structure
 ```
 src/
-├── index.ts                    # Hono app, middleware, OpenAPI docs
+├── index.ts                    # Server startup (imports app.ts)
+├── app.ts                      # Hono app configuration (routes, middleware) — testable
 ├── config/
 │   └── env.ts                  # Env validation with Zod (includes VAST_AI_API_KEY, IMAGES_STORAGE_PATH)
 ├── lib/
@@ -76,19 +81,24 @@ src/
 │   └── vast.ts                 # Vast.ai API client (find offer, create/destroy instance, poll status)
 ├── schemas/
 │   └── generation.ts           # Zod + OpenAPI schemas for jobs and images
-└── routes/
-    ├── generate/               # POST /api/v1/generate
-    │   ├── index.ts
-    │   ├── routes.ts
-    │   └── definitions.ts
-    ├── jobs/                   # GET /api/v1/jobs/:id
-    │   ├── index.ts
-    │   ├── routes.ts
-    │   └── definitions.ts
-    └── images/                 # GET /api/v1/images, GET /api/v1/images/:filename, DELETE
-        ├── index.ts
-        ├── routes.ts
-        └── definitions.ts
+├── routes/
+│   ├── generate/               # POST /api/v1/generate
+│   │   ├── index.ts
+│   │   ├── routes.ts
+│   │   └── definitions.ts
+│   ├── jobs/                   # GET /api/v1/jobs/:id
+│   │   ├── index.ts
+│   │   ├── routes.ts
+│   │   └── definitions.ts
+│   └── images/                 # GET /api/v1/images, GET /api/v1/images/:filename, DELETE
+│       ├── index.ts
+│       ├── routes.ts
+│       └── definitions.ts
+└── __tests__/                  # Vitest test suite
+    ├── setup.ts                # Global mocks (Prisma, Vast.ai, fs)
+    ├── generate.test.ts        # Tests for POST /api/v1/generate
+    ├── jobs.test.ts            # Tests for GET /api/v1/jobs/:id
+    └── images.test.ts          # Tests for /api/v1/images endpoints
 ```
 
 ### Prisma Models
@@ -155,6 +165,36 @@ ComfyUI exposes a REST API on internal port 18188 (mapped externally by Vast.ai)
 The txt2img workflow JSON is templated in `src/lib/vast.ts`.
 
 ## Key Patterns
+
+### Testing
+Tests use Vitest with Hono's `app.request()` method (in-memory, no HTTP server needed).
+
+**Setup:**
+- `vitest.config.ts` configures the test environment with `setupFiles: ['./src/__tests__/setup.ts']`
+- `setup.ts` provides global mocks for:
+  - **Prisma** — all DB calls are mocked (no real PostgreSQL needed)
+  - **Vast.ai** — API calls return fake data (no real GPU instances)
+  - **fs** — file operations are mocked (no real disk writes)
+
+**Writing tests:**
+```typescript
+import app from '../app.js';
+import { prisma } from '../lib/prisma.js';
+
+const mockPrisma = vi.mocked(prisma, true);
+
+it('should create a job', async () => {
+  mockPrisma.generationJob.create.mockResolvedValue({ id: 'test-id', ... });
+  
+  const res = await app.request('/api/v1/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: 'test' }),
+  });
+  
+  expect(res.status).toBe(202);
+});
+```
 
 ### Error Handling
 - Centralized in `src/lib/error-handler.ts` — do not add try/catch in route handlers
