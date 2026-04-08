@@ -52,8 +52,9 @@ Generation is **asynchronous**: `POST /generate` returns immediately with a `job
 
 ### Testing
 - `npm run test` — Run tests with Docker (PostgreSQL 17 test DB + test runner)
+- `npm run test:db:start` — Start test database in background
+- `npm run test:db:stop` — Stop test database
 - `npm run test:local` — Run tests against local test DB (port 5433)
-- `npm run test:run` — Run tests directly (used by CI/docker)
 - `npm run test:watch` — Run tests in watch mode (auto-reload)
 
 ### Code Quality
