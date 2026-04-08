@@ -16,9 +16,7 @@ services:
       retries: 5
 
   test-runner:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: node:22-alpine
     depends_on:
       test-db:
         condition: service_healthy
@@ -29,6 +27,5 @@ services:
       IMAGES_STORAGE_PATH: /tmp/test-images
     volumes:
       - .:/app
-      - /app/node_modules
     working_dir: /app
-    command: sh -c "npx prisma migrate deploy && npm run test:run"
+    command: sh -c "npm ci && npx prisma migrate deploy && npm run test:run"
