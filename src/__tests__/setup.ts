@@ -1,5 +1,4 @@
-import { execSync } from 'node:child_process';
-import { afterAll, beforeAll, beforeEach, vi } from 'vitest';
+import { afterAll, beforeEach, vi } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 
 // Mock fs operations for image tests
@@ -14,21 +13,6 @@ vi.mock('node:fs', async (importOriginal) => {
     unlinkSync: vi.fn(),
     statSync: vi.fn().mockReturnValue({ size: 1024 }),
   };
-});
-
-// Setup: run migrations once before all tests
-beforeAll(async () => {
-  console.log('Setting up test database...');
-  try {
-    execSync('npx prisma migrate deploy', {
-      env: process.env,
-      stdio: 'inherit',
-    });
-    console.log('Migrations applied successfully');
-  } catch (error) {
-    console.error('Failed to apply migrations:', error);
-    throw error;
-  }
 });
 
 // Reset database before each test
