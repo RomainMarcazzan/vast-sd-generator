@@ -89,6 +89,10 @@ src/
 │   │   ├── index.ts
 │   │   ├── routes.ts
 │   │   └── definitions.ts
+│   ├── instances/              # POST/GET/DELETE /api/v1/instances (persistent GPU)
+│   │   ├── index.ts
+│   │   ├── routes.ts
+│   │   └── definitions.ts
 │   ├── jobs/                   # GET /api/v1/jobs/:id
 │   │   ├── index.ts
 │   │   ├── routes.ts
@@ -109,18 +113,20 @@ src/
 
 ```prisma
 model GenerationJob {
-  id             String    @id @default(cuid())
+  id             String         @id @default(cuid())
   prompt         String
   negativePrompt String?
-  width          Int       @default(512)
-  height         Int       @default(512)
-  steps          Int       @default(20)
-  status         JobStatus @default(PENDING)
-  vastInstanceId String?   // Vast.ai instance ID (to destroy after use)
+  width          Int            @default(512)
+  height         Int            @default(512)
+  steps          Int            @default(20)
+  status         JobStatus      @default(PENDING)
+  vastInstanceId String?        // Vast.ai instance ID (to destroy after use)
   errorMessage   String?
   image          GeneratedImage?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  instanceId     String?        // Optional: persistent instance reference
+  instance       VastInstance?  @relation(fields: [instanceId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 enum JobStatus {
@@ -141,6 +147,26 @@ model GeneratedImage {
   jobId     String        @unique
   job       GenerationJob @relation(fields: [jobId], references: [id])
   createdAt DateTime      @default(now())
+}
+
+model VastInstance {
+  id             String         @id @default(cuid())
+  vastInstanceId String         @unique  // Vast.ai instance ID
+  status         InstanceStatus @default(RUNNING)
+  host           String?        // Public IP
+  port           String?        // Mapped port
+  gpuName        String?        // GPU name (e.g. "RTX 4090")
+  costPerHour    Float?         // Cost per hour ($)
+  lastUsedAt     DateTime       @updatedAt
+  expiresAt      DateTime       // Auto-destruction timeout
+  jobs           GenerationJob[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+enum InstanceStatus {
+  RUNNING
+  DESTROYED
 }
 ```
 
@@ -224,6 +250,31 @@ describe('POST /api/v1/generate', () => {
 - A background async function advances the job through states (no BullMQ — simple async/await fire-and-forget)
 - If any step fails, job status is set to `FAILED` with `errorMessage`; Vast.ai instance is destroyed if it was created
 - Client polls `GET /jobs/:id` — responds with current status + image URL when completed
+
+### Persistent Instances (Cost Optimization)
+For iterative workflows (generate → review → generate again), use persistent instances to avoid paying the boot cost multiple times.
+
+**Two modes:**
+
+1. **Auto mode** (default): Instance created/destroyed for each job
+   ```
+   POST /generate → Job uses temporary instance → Auto-destroyed on completion
+   ```
+
+2. **Persistent mode**: Reuse the same instance for multiple jobs
+   ```
+   POST /instances              → Create persistent instance
+   POST /generate (instanceId)  → Job uses existing instance
+   POST /generate (instanceId)  → Another job, same instance
+   DELETE /instances/:id        → Destroy when done
+   ```
+
+**Safety features:**
+- Auto-destruction after 30 minutes of inactivity
+- Manual destruction via `DELETE /instances/:id`
+- Check dashboard: https://cloud.vast.ai/instances/
+
+**Cost savings:** ~10x cheaper for 10+ images (pay boot cost once, not 10 times)
 
 ### Image Storage
 - Images saved to `${IMAGES_STORAGE_PATH}/${jobId}.png` (env var, default `/data/images`)
