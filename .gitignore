@@ -37,6 +37,9 @@ coverage/
 test-data/
 temp-test/
 
+# Generated images (dev)
+data/
+
 # Misc
 .cache/
 .temp/

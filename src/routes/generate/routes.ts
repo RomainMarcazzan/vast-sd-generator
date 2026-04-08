@@ -16,14 +16,29 @@ import { generateRoute } from './definitions.js';
 
 const app = new OpenAPIHono();
 
+function elapsed(start: number): string {
+  const ms = Date.now() - start;
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
 async function processJob(jobId: string) {
   let vastInstanceId: number | null = null;
+  const jobStart = Date.now();
 
   try {
     // 1. PENDING → PROVISIONING: find offer and create instance
+    let stepStart = Date.now();
+    console.log(`[job:${jobId}] Searching for GPU offer...`);
     const offer = await findCheapOffer();
+    console.log(
+      `[job:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} (${offer.gpu_ram}MB) — $${offer.dph_total}/h [${elapsed(stepStart)}]`
+    );
+
+    stepStart = Date.now();
+    console.log(`[job:${jobId}] Creating Vast.ai instance...`);
     const instanceId = await createInstance(offer.id);
     vastInstanceId = instanceId;
+    console.log(`[job:${jobId}] Instance #${instanceId} created [${elapsed(stepStart)}]`);
 
     await prisma.generationJob.update({
       where: { id: jobId },
@@ -31,8 +46,11 @@ async function processJob(jobId: string) {
     });
 
     // 2. PROVISIONING → GENERATING: wait for instance, send prompt
+    stepStart = Date.now();
+    console.log(`[job:${jobId}] Waiting for instance to be ready...`);
     const instance = await pollUntilReady(instanceId);
     const { host, port } = getInstanceEndpoint(instance);
+    console.log(`[job:${jobId}] Instance ready at ${host}:${port} [${elapsed(stepStart)}]`);
 
     const job = await prisma.generationJob.update({
       where: { id: jobId },
@@ -40,6 +58,8 @@ async function processJob(jobId: string) {
     });
 
     // 3. GENERATING → COMPLETED: generate, download, save
+    stepStart = Date.now();
+    console.log(`[job:${jobId}] Sending prompt to ComfyUI...`);
     const outputFilename = await generateImage(host, port, {
       prompt: job.prompt,
       negativePrompt: job.negativePrompt ?? undefined,
@@ -47,8 +67,14 @@ async function processJob(jobId: string) {
       height: job.height,
       steps: job.steps,
     });
+    console.log(`[job:${jobId}] Image generated: ${outputFilename} [${elapsed(stepStart)}]`);
 
+    stepStart = Date.now();
+    console.log(`[job:${jobId}] Downloading image...`);
     const imageBuffer = await downloadImage(host, port, outputFilename);
+    console.log(
+      `[job:${jobId}] Downloaded ${(imageBuffer.length / 1024).toFixed(0)}KB [${elapsed(stepStart)}]`
+    );
 
     // Save image to disk
     const storagePath = env.IMAGES_STORAGE_PATH;
@@ -78,8 +104,11 @@ async function processJob(jobId: string) {
       where: { id: jobId },
       data: { status: 'COMPLETED' },
     });
+
+    console.log(`[job:${jobId}] ✓ Completed [total: ${elapsed(jobStart)}]`);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[job:${jobId}] ✗ Failed after ${elapsed(jobStart)}: ${message}`);
     await prisma.generationJob
       .update({
         where: { id: jobId },
@@ -89,8 +118,9 @@ async function processJob(jobId: string) {
   } finally {
     // Always destroy the instance to stop billing
     if (vastInstanceId) {
+      console.log(`[job:${jobId}] Destroying instance #${vastInstanceId}...`);
       await destroyInstance(vastInstanceId).catch((err) => {
-        console.error(`Failed to destroy instance ${vastInstanceId}:`, err);
+        console.error(`[job:${jobId}] Failed to destroy instance ${vastInstanceId}:`, err);
       });
     }
   }
