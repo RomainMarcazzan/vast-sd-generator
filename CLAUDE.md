@@ -175,7 +175,7 @@ enum InstanceStatus {
 
 Key operations:
 - `findCheapOffer()` — queries Vast.ai for cheapest GPU with `reliability >= 0.95`, `inet_down >= 500 Mbps`, `disk_bw >= 200 MB/s`, `dph_total >= $0.05/h` (avoids unreliable dirt-cheap machines)
-- `createInstance(offerId)` — creates instance with ComfyUI Docker image (`vastai/comfy`), exposes port 18188, sets `PROVISIONING_SCRIPT` to `scripts/provision-comfyui.sh` (downloads SDXL model on first boot)
+- `createInstance(offerId)` — creates instance using ComfyUI template hash (`cc68218cbd560823cb841b721786077c`), sets `PROVISIONING_SCRIPT` to `scripts/provision-comfyui.sh` (downloads SDXL model on first boot). Using template_hash_id is required — raw Docker image name causes "Template not found" and ComfyUI never starts.
 - `getInstance(instanceId)` — fetches current instance state from Vast.ai
 - `getInstanceEndpoint(instance)` — extracts public IP and mapped port from instance data
 - `generateImage(instanceHost, instancePort, params)` — calls ComfyUI HTTP API with the prompt
@@ -186,7 +186,8 @@ All Vast.ai API calls use `Authorization: Bearer ${VAST_AI_API_KEY}`.
 
 ### ComfyUI Integration
 
-The Vast.ai instance runs **ComfyUI** (Docker image: `vastai/comfy:latest`, official Vast.ai template).
+The Vast.ai instance uses the **ComfyUI template** (hash: `cc68218cbd560823cb841b721786077c`, image: `vastai/comfy:v0.18.2-cuda-12.9-py312`).
+Using `template_hash_id` is mandatory — specifying just the Docker image name causes "Template not found" and ComfyUI supervisor never starts.
 `scripts/provision-comfyui.sh` (hosted on GitHub, referenced via raw URL) auto-downloads SDXL (`sd_xl_base_1.0.safetensors`) on first boot.
 ComfyUI exposes a REST API on internal port 18188 (mapped externally by Vast.ai):
 - `POST /prompt` — submit a generation workflow
