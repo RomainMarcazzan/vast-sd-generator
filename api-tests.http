@@ -203,14 +203,14 @@ Content-Type: application/json
 
 ###
 
-### 2. Générer image #1 avec l'instance (récupérez l'id de la réponse précédente)
+### 2. Générer image #1 avec l'instance (mettez l'id retourné dans @instanceId en haut du fichier)
 # @name generate1
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
   "prompt": "a sunset over mountains",
-  "instanceId": "cmnqf3xxj0000xwmsg3hxl808"
+  "instanceId": "{{instanceId}}"
 }
 
 ###
@@ -221,17 +221,17 @@ Content-Type: application/json
 
 {
   "prompt": "a sunset over ocean",
-  "instanceId": "cmnqf3xxj0000xwmsg3hxl808"
+  "instanceId": "{{instanceId}}"
 }
 
 ###
 
-### 4. Vérifier le status des jobs
-GET {{baseUrl}}/api/v1/jobs/REPLACE_WITH_JOB_ID_1
+### 4. Vérifier le status des jobs (mettez le jobId retourné dans @jobId en haut du fichier)
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}
 
 ###
 
 ### 5. Détruire l'instance quand vous avez fini
-DELETE {{baseUrl}}/api/v1/instances/cmnqf3xxj0000xwmsg3hxl808
+DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
 
 ###
