@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 
 const VAST_API_BASE = 'https://console.vast.ai';
-const COMFYUI_TEMPLATE_IMAGE = 'vastai/comfy:v0.18.2-cuda-12.9-py312';
+const COMFYUI_TEMPLATE_HASH = 'cc68218cbd560823cb841b721786077c';
 const COMFYUI_INTERNAL_PORT = '18188';
 const PROVISIONING_SCRIPT_URL =
   'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-comfyui.sh';
@@ -91,10 +91,8 @@ export async function createInstance(offerId: number): Promise<number> {
   const res = await vastFetch(`/api/v0/asks/${offerId}/`, {
     method: 'PUT',
     body: JSON.stringify({
-      image: COMFYUI_TEMPLATE_IMAGE,
-      disk: 50,
+      template_hash_id: COMFYUI_TEMPLATE_HASH,
       env: {
-        '-p 18188:18188': '1',
         PROVISIONING_SCRIPT: PROVISIONING_SCRIPT_URL,
       },
     }),
