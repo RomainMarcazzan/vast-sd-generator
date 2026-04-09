@@ -53,7 +53,7 @@ model GeneratedImage {
 model VastInstance {
   id             String          @id @default(cuid())
   vastInstanceId String          @unique // ID de l'instance chez Vast.ai
-  status         InstanceStatus  @default(RUNNING)
+  status         InstanceStatus  @default(PROVISIONING)
   host           String?         // IP publique
   port           String?         // Port mappé
   gpuName        String?         // Nom du GPU
@@ -66,6 +66,7 @@ model VastInstance {
 }
 
 enum InstanceStatus {
+  PROVISIONING
   RUNNING
   DESTROYED
 }

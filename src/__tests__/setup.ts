@@ -20,6 +20,7 @@ beforeEach(async () => {
   // Delete in correct order due to foreign keys
   await prisma.generatedImage.deleteMany();
   await prisma.generationJob.deleteMany();
+  await prisma.vastInstance.deleteMany();
 });
 
 // Cleanup after all tests

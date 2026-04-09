@@ -7,14 +7,15 @@
 #   3. GET /images/:file  → récupère l'image générée
 #
 # Flow typique (mode persistant - économique pour itérations) :
-#   1. POST /instances              → crée une instance persistante
-#   2. POST /generate               → avec instanceId, génère image #1
-#   3. POST /generate               → avec instanceId, génère image #2
+#   1. POST /instances              → retourne { id, status: "PROVISIONING" } immédiatement
+#   2. GET /instances               → poll jusqu'à status RUNNING (boot + download modèle ~5-10 min)
+#   3. POST /generate               → avec instanceId, génère image #1
+#   4. POST /generate               → avec instanceId, génère image #2
 #   ... (itérez autant que vous voulez)
-#   4. DELETE /instances/:id        → détruit l'instance (arrête la facturation)
+#   5. DELETE /instances/:id        → détruit l'instance (arrête la facturation)
 #
-# ⚠️  POST /generate loue un GPU sur Vast.ai (~$0.10-0.30/h)
-#     En mode persistant, l'instance reste active 30 min puis auto-destruction
+# ⚠️  POST /instances / POST /generate louent un GPU sur Vast.ai (~$0.10-0.30/h)
+#     En mode persistant, l'instance reste active 30 min après la création puis auto-destruction
 #     Vérifiez votre dashboard Vast.ai : https://cloud.vast.ai/instances/
 
 @baseUrl = http://localhost:3000

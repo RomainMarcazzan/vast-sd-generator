@@ -152,9 +152,9 @@ model GeneratedImage {
 model VastInstance {
   id             String         @id @default(cuid())
   vastInstanceId String         @unique  // Vast.ai instance ID
-  status         InstanceStatus @default(RUNNING)
-  host           String?        // Public IP
-  port           String?        // Mapped port
+  status         InstanceStatus @default(PROVISIONING)
+  host           String?        // Public IP (null while PROVISIONING)
+  port           String?        // Mapped port (null while PROVISIONING)
   gpuName        String?        // GPU name (e.g. "RTX 4090")
   costPerHour    Float?         // Cost per hour ($)
   lastUsedAt     DateTime       @updatedAt
@@ -165,6 +165,7 @@ model VastInstance {
 }
 
 enum InstanceStatus {
+  PROVISIONING   // booting + downloading model (~5-10 min)
   RUNNING
   DESTROYED
 }
@@ -173,20 +174,20 @@ enum InstanceStatus {
 ### Vast.ai Client (`src/lib/vast.ts`)
 
 Key operations:
-- `findCheapOffer()` — queries Vast.ai for cheapest available GPU with `reliability >= 0.95`
-- `createInstance(offerId)` — creates instance with ComfyUI Docker image (`vastai/comfy`), exposes port 18188
-- `pollUntilReady(instanceId)` — polls every 5s until instance status is `running` (timeout: 5min)
+- `findCheapOffer()` — queries Vast.ai for cheapest GPU with `reliability >= 0.95`, `inet_down >= 200 MB/s`, `disk_bw >= 200 MB/s`
+- `createInstance(offerId)` — creates instance with ComfyUI Docker image (`vastai/comfy`), exposes port 18188, sets `PROVISIONING_SCRIPT` to `scripts/provision-comfyui.sh` (downloads SDXL model on first boot)
+- `getInstance(instanceId)` — fetches current instance state from Vast.ai
 - `getInstanceEndpoint(instance)` — extracts public IP and mapped port from instance data
 - `generateImage(instanceHost, instancePort, params)` — calls ComfyUI HTTP API with the prompt
 - `downloadImage(url)` — fetches image binary from the instance
-- `destroyInstance(instanceId)` — destroys the instance after image is downloaded
+- `destroyInstance(instanceId)` — destroys the instance
 
 All Vast.ai API calls use `Authorization: Bearer ${VAST_AI_API_KEY}`.
 
 ### ComfyUI Integration
 
 The Vast.ai instance runs **ComfyUI** (Docker image: `vastai/comfy:latest`, official Vast.ai template).
-A provisioning script auto-downloads SDXL (`sd_xl_base_1.0.safetensors`) on first boot.
+`scripts/provision-comfyui.sh` (hosted on GitHub, referenced via raw URL) auto-downloads SDXL (`sd_xl_base_1.0.safetensors`) on first boot.
 ComfyUI exposes a REST API on internal port 18188 (mapped externally by Vast.ai):
 - `POST /prompt` — submit a generation workflow
 - `GET /history/{prompt_id}` — poll for completion and get output filenames
@@ -263,14 +264,16 @@ For iterative workflows (generate → review → generate again), use persistent
 
 2. **Persistent mode**: Reuse the same instance for multiple jobs
    ```
-   POST /instances              → Create persistent instance
-   POST /generate (instanceId)  → Job uses existing instance
+   POST /instances              → Returns { id, status: "PROVISIONING" } immediately
+                                   Boot + model download runs in background (~5-10 min)
+   GET /instances               → Poll until status is RUNNING
+   POST /generate (instanceId)  → Job uses existing instance (must be RUNNING)
    POST /generate (instanceId)  → Another job, same instance
-   DELETE /instances/:id        → Destroy when done
+   DELETE /instances/:id        → Destroy when done (also works on PROVISIONING)
    ```
 
 **Safety features:**
-- Auto-destruction after 30 minutes of inactivity
+- Auto-destruction 30 minutes after creation (timer starts when instance becomes RUNNING)
 - Manual destruction via `DELETE /instances/:id`
 - Check dashboard: https://cloud.vast.ai/instances/
 

@@ -3,12 +3,8 @@ import { env } from '../config/env.js';
 const VAST_API_BASE = 'https://console.vast.ai';
 const COMFYUI_TEMPLATE_IMAGE = 'vastai/comfy:latest';
 const COMFYUI_INTERNAL_PORT = '18188';
-const SDXL_MODEL_URL =
-  'https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors';
-
-const PROVISIONING_SCRIPT_CONTENT = `#!/bin/bash
-wget -q -O /workspace/ComfyUI/models/checkpoints/sd_xl_base_1.0.safetensors "${SDXL_MODEL_URL}"
-`;
+const PROVISIONING_SCRIPT_URL =
+  'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-comfyui.sh';
 
 // --- Types ---
 
@@ -72,6 +68,8 @@ export async function findCheapOffer(): Promise<VastOffer> {
     body: JSON.stringify({
       gpu_ram: { gte: 12000 },
       reliability: { gte: 0.95 },
+      inet_down: { gte: 200 },
+      disk_bw: { gte: 200 },
       rentable: { eq: true },
       type: 'ondemand',
       limit: 5,
@@ -96,9 +94,8 @@ export async function createInstance(offerId: number): Promise<number> {
       disk: 50,
       env: {
         '-p 18188:18188': '1',
-        PROVISIONING_SCRIPT: `data:text/plain;base64,${btoa(PROVISIONING_SCRIPT_CONTENT)}`,
+        PROVISIONING_SCRIPT: PROVISIONING_SCRIPT_URL,
       },
-      onstart: '/opt/ai-dock/bin/provisioning.sh',
     }),
   });
 

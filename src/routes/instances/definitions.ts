@@ -7,7 +7,7 @@ export const createInstanceSchema = z.object({
 export const instanceResponseSchema = z.object({
   id: z.string(),
   vastInstanceId: z.string(),
-  status: z.enum(['RUNNING', 'DESTROYED']),
+  status: z.enum(['PROVISIONING', 'RUNNING', 'DESTROYED']),
   host: z.string().nullable(),
   port: z.string().nullable(),
   gpuName: z.string().nullable(),

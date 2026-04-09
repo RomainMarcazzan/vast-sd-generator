@@ -5,8 +5,8 @@ import {
   createInstance,
   destroyInstance,
   findCheapOffer,
+  getInstance,
   getInstanceEndpoint,
-  pollUntilReady,
 } from '../../lib/vast.js';
 import {
   createInstanceSchema,
@@ -93,7 +93,7 @@ const deleteInstanceRoute = createRoute({
 // List active instances
 app.openapi(listInstancesRoute, async (c) => {
   const instances = await prisma.vastInstance.findMany({
-    where: { status: 'RUNNING' },
+    where: { status: { in: ['PROVISIONING', 'RUNNING'] } },
     orderBy: { lastUsedAt: 'desc' },
   });
 
@@ -124,28 +124,21 @@ app.openapi(createInstanceRoute, async (c) => {
   const vastId = await createInstance(offer.id);
   console.log(`[instance] Instance #${vastId} created`);
 
-  console.log('[instance] Waiting for instance to be ready...');
-  const instance = await pollUntilReady(vastId);
-  const { host, port } = getInstanceEndpoint(instance);
-  console.log(`[instance] Instance ready at ${host}:${port}`);
-
-  // Calculer la date d'expiration
+  // Sauver en DB immédiatement avec status PROVISIONING
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + INSTANCE_TIMEOUT_MINUTES);
 
   const dbInstance = await prisma.vastInstance.create({
     data: {
       vastInstanceId: String(vastId),
-      host,
-      port,
       gpuName: offer.gpu_name,
       costPerHour: offer.dph_total,
       expiresAt,
     },
   });
 
-  // Programmer la destruction automatique
-  scheduleAutoDestroy(dbInstance.id, vastId, INSTANCE_TIMEOUT_MINUTES);
+  // Poll en background (fire-and-forget)
+  provisionInstance(dbInstance.id, vastId);
 
   return c.json(
     {
@@ -172,7 +165,7 @@ app.openapi(deleteInstanceRoute, async (c) => {
     where: { id },
   });
 
-  if (!instance || instance.status === 'DESTROYED') {
+  if (!instance || (instance.status !== 'RUNNING' && instance.status !== 'PROVISIONING')) {
     return c.json({ error: 'Instance not found' }, 404);
   }
 
@@ -188,6 +181,50 @@ app.openapi(deleteInstanceRoute, async (c) => {
 
   return c.json({ message: 'Instance destroyed' }, 200);
 });
+
+// Poll en background jusqu'à ce que l'instance soit ready
+async function provisionInstance(dbInstanceId: string, vastId: number) {
+  const POLL_INTERVAL_MS = 30_000;
+
+  try {
+    while (true) {
+      const instance = await getInstance(vastId);
+
+      if (instance.actual_status === 'running') {
+        const { host, port } = getInstanceEndpoint(instance);
+        console.log(`[instance] Instance #${vastId} ready at ${host}:${port}`);
+
+        await prisma.vastInstance.update({
+          where: { id: dbInstanceId },
+          data: { status: 'RUNNING', host, port },
+        });
+
+        // Programmer la destruction automatique à partir de maintenant
+        scheduleAutoDestroy(dbInstanceId, vastId, INSTANCE_TIMEOUT_MINUTES);
+        return;
+      }
+
+      if (instance.actual_status === 'exited' || instance.actual_status === 'error') {
+        throw new Error(`Instance entered ${instance.actual_status} state`);
+      }
+
+      console.log(`[instance] Instance #${vastId} status: ${instance.actual_status}`);
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[instance] Provisioning failed for #${vastId}: ${message}`);
+
+    await destroyInstance(vastId).catch((err) => {
+      console.error(`[instance] Failed to destroy #${vastId}:`, err);
+    });
+
+    await prisma.vastInstance.update({
+      where: { id: dbInstanceId },
+      data: { status: 'DESTROYED' },
+    });
+  }
+}
 
 // Fonction pour programmer la destruction auto
 function scheduleAutoDestroy(instanceId: string, vastId: number, minutes: number) {

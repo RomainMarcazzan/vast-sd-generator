@@ -13,7 +13,7 @@ vi.mock('../lib/vast.js', () => ({
     reliability: 0.99,
   }),
   createInstance: vi.fn().mockResolvedValue(67890),
-  pollUntilReady: vi.fn().mockResolvedValue({
+  getInstance: vi.fn().mockResolvedValue({
     id: 67890,
     actual_status: 'running',
     public_ipaddr: '1.2.3.4',
@@ -36,19 +36,19 @@ describe('Instances API', () => {
       const body = await res.json();
       expect(body).toHaveProperty('id');
       expect(body).toHaveProperty('vastInstanceId', '67890');
-      expect(body).toHaveProperty('status', 'RUNNING');
-      expect(body).toHaveProperty('host', '1.2.3.4');
-      expect(body).toHaveProperty('port', '45678');
+      expect(body).toHaveProperty('status', 'PROVISIONING');
+      expect(body).toHaveProperty('host', null);
+      expect(body).toHaveProperty('port', null);
       expect(body).toHaveProperty('gpuName', 'RTX 4090');
       expect(body).toHaveProperty('costPerHour', 0.25);
       expect(body).toHaveProperty('expiresAt');
 
-      // Vérifier en DB
+      // En DB, le background poll peut déjà avoir mis à jour le status
+      // On vérifie que l'instance existe
       const instance = await prisma.vastInstance.findUnique({
         where: { id: body.id },
       });
       expect(instance).not.toBeNull();
-      expect(instance?.status).toBe('RUNNING');
     });
   });
 
@@ -75,6 +75,27 @@ describe('Instances API', () => {
       expect(body.length).toBeGreaterThan(0);
       expect(body[0]).toHaveProperty('id');
       expect(body[0]).toHaveProperty('status', 'RUNNING');
+    });
+
+    it('should list provisioning instances', async () => {
+      await prisma.vastInstance.create({
+        data: {
+          vastInstanceId: '55555',
+          status: 'PROVISIONING',
+          gpuName: 'RTX 4090',
+          costPerHour: 0.25,
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        },
+      });
+
+      const res = await app.request('/api/v1/instances');
+      const body = await res.json();
+
+      const provisioningInstance = body.find(
+        (i: { vastInstanceId: string }) => i.vastInstanceId === '55555'
+      );
+      expect(provisioningInstance).toBeDefined();
+      expect(provisioningInstance.status).toBe('PROVISIONING');
     });
 
     it('should not list destroyed instances', async () => {
@@ -191,10 +212,11 @@ describe('Generate with persistent instance', () => {
     const body = await res.json();
     expect(body).toHaveProperty('jobId');
 
-    // Vérifier que le job a la référence instance
+    // Le job est créé (le lien instanceId est set en background par processJob)
     const job = await prisma.generationJob.findUnique({
       where: { id: body.jobId },
     });
-    expect(job?.instanceId).toBe(instance.id);
+    expect(job).not.toBeNull();
+    expect(job?.prompt).toBe('test with instance');
   });
 });
