@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 
 const VAST_API_BASE = 'https://console.vast.ai';
-const COMFYUI_TEMPLATE_IMAGE = 'vastai/comfy:latest';
+const COMFYUI_TEMPLATE_IMAGE = 'vastai/comfy:v0.18.2-cuda-12.9-py312';
 const COMFYUI_INTERNAL_PORT = '18188';
 const PROVISIONING_SCRIPT_URL =
   'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-comfyui.sh';
