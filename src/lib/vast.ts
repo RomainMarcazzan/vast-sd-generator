@@ -93,6 +93,7 @@ export async function createInstance(offerId: number): Promise<number> {
     body: JSON.stringify({
       template_hash_id: COMFYUI_TEMPLATE_HASH,
       env: {
+        '-p 18188:18188': '1',
         PROVISIONING_SCRIPT: PROVISIONING_SCRIPT_URL,
       },
     }),
