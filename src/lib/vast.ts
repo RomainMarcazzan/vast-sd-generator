@@ -68,8 +68,9 @@ export async function findCheapOffer(): Promise<VastOffer> {
     body: JSON.stringify({
       gpu_ram: { gte: 12000 },
       reliability: { gte: 0.95 },
-      inet_down: { gte: 200 },
+      inet_down: { gte: 500 },
       disk_bw: { gte: 200 },
+      dph_total: { gte: 0.05 },
       rentable: { eq: true },
       type: 'ondemand',
       limit: 5,
@@ -108,9 +109,9 @@ export async function createInstance(offerId: number): Promise<number> {
   return data.new_contract;
 }
 
-export async function getInstance(instanceId: number): Promise<VastInstance> {
+export async function getInstance(instanceId: number): Promise<VastInstance | null> {
   const res = await vastFetch(`/api/v0/instances/${instanceId}/`);
-  const data = (await res.json()) as { instances: VastInstance };
+  const data = (await res.json()) as { instances: VastInstance | null };
   return data.instances;
 }
 
@@ -123,6 +124,10 @@ export async function pollUntilReady(
 
   while (Date.now() - start < timeoutMs) {
     const instance = await getInstance(instanceId);
+
+    if (instance === null) {
+      throw new Error('Instance no longer exists on Vast.ai');
+    }
 
     if (instance.actual_status === 'running') {
       return instance;

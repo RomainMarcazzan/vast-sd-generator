@@ -190,6 +190,10 @@ async function provisionInstance(dbInstanceId: string, vastId: number) {
     while (true) {
       const instance = await getInstance(vastId);
 
+      if (instance === null) {
+        throw new Error('Instance no longer exists on Vast.ai (deleted externally?)');
+      }
+
       if (instance.actual_status === 'running') {
         const { host, port } = getInstanceEndpoint(instance);
         console.log(`[instance] Instance #${vastId} ready at ${host}:${port}`);

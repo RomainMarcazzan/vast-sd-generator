@@ -174,7 +174,7 @@ enum InstanceStatus {
 ### Vast.ai Client (`src/lib/vast.ts`)
 
 Key operations:
-- `findCheapOffer()` — queries Vast.ai for cheapest GPU with `reliability >= 0.95`, `inet_down >= 200 MB/s`, `disk_bw >= 200 MB/s`
+- `findCheapOffer()` — queries Vast.ai for cheapest GPU with `reliability >= 0.95`, `inet_down >= 500 Mbps`, `disk_bw >= 200 MB/s`, `dph_total >= $0.05/h` (avoids unreliable dirt-cheap machines)
 - `createInstance(offerId)` — creates instance with ComfyUI Docker image (`vastai/comfy`), exposes port 18188, sets `PROVISIONING_SCRIPT` to `scripts/provision-comfyui.sh` (downloads SDXL model on first boot)
 - `getInstance(instanceId)` — fetches current instance state from Vast.ai
 - `getInstanceEndpoint(instance)` — extracts public IP and mapped port from instance data
