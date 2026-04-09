@@ -190,12 +190,14 @@ async function waitForComfyUI(host: string, port: string, vastId: number) {
   while (true) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      console.log(`[instance] ComfyUI #${vastId} /system_stats → HTTP ${res.status}`);
       if (res.ok) {
         console.log(`[instance] ComfyUI #${vastId} is ready`);
         return;
       }
-    } catch {
-      // pas encore prêt
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`[instance] ComfyUI #${vastId} /system_stats → ${msg}`);
     }
     console.log(
       `[instance] ComfyUI #${vastId} not ready yet, retrying in ${INTERVAL_MS / 1000}s...`

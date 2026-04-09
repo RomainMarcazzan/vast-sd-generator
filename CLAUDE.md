@@ -2,6 +2,31 @@
 
 This file provides guidance to Claude Code when working with this repository.
 
+## TODO — À tester demain (session du 2026-04-09)
+
+Le code est prêt mais n'a pas encore été validé end-to-end. Reprendre dans cet ordre :
+
+1. **Créer une instance** via `POST /api/v1/instances` et surveiller les logs serveur
+   - Vérifier que `waitForComfyUI` passe (ne reste plus bloqué en boucle)
+   - La config correcte est maintenant en place : port `8188` (Caddy) + `WEB_ENABLE_AUTH=false`
+
+2. **Quand l'instance est RUNNING**, générer une image :
+   ```http
+   POST /api/v1/generate
+   { "prompt": "a sunset over mountains", "instanceId": "<id>" }
+   ```
+
+3. **Vérifier** que le job passe PENDING → GENERATING → COMPLETED et que l'image est accessible via `GET /api/v1/images/<jobId>.png`
+
+4. **Si ça marche** → commit + push + déployer sur le RPi via SSH
+
+**Contexte technique découvert le 2026-04-09 :**
+- ComfyUI dans le template Vast.ai écoute sur `127.0.0.1:18188` (localhost only)
+- Caddy proxie sur `*:8188` avec Basic Auth activé par défaut
+- Fix : mapper le port `8188` (Caddy) et passer `WEB_ENABLE_AUTH=false` → Caddy devient transparent
+- Les modèles SDXL sont bien présents (`sd_xl_base_1.0.safetensors` + `sd_xl_turbo_1.0_fp16.safetensors`)
+- Le provisioning script GitHub fonctionne correctement
+
 ## Overview
 
 This is a **Stable Diffusion image generation API** built on top of the Hono + Prisma + PostgreSQL stack.
@@ -189,7 +214,14 @@ All Vast.ai API calls use `Authorization: Bearer ${VAST_AI_API_KEY}`.
 The Vast.ai instance uses the **ComfyUI template** (hash: `cc68218cbd560823cb841b721786077c`, image: `vastai/comfy:v0.18.2-cuda-12.9-py312`).
 Using `template_hash_id` is mandatory — specifying just the Docker image name causes "Template not found" and ComfyUI supervisor never starts.
 `scripts/provision-comfyui.sh` (hosted on GitHub, referenced via raw URL) auto-downloads SDXL (`sd_xl_base_1.0.safetensors`) on first boot.
-ComfyUI exposes a REST API on internal port 18188 (mapped externally by Vast.ai):
+
+**Port architecture inside the container:**
+- ComfyUI listens on `127.0.0.1:18188` (localhost only, managed by supervisord)
+- Caddy reverse proxy listens on `*:8188` (all interfaces) → proxies to localhost:18188
+- We map port `8188` externally (`-p 8188:8188`) and pass `WEB_ENABLE_AUTH=false` to disable Caddy's Basic Auth
+- `getInstanceEndpoint` looks for `8188/tcp` in the Vast.ai ports mapping to get the external IP:port
+
+ComfyUI REST API (accessed via Caddy on port 8188):
 - `POST /prompt` — submit a generation workflow
 - `GET /history/{prompt_id}` — poll for completion and get output filenames
 - `GET /view?filename=...` — download the generated image
