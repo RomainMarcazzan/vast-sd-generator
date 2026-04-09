@@ -182,6 +182,28 @@ app.openapi(deleteInstanceRoute, async (c) => {
   return c.json({ message: 'Instance destroyed' }, 200);
 });
 
+// Attend que ComfyUI soit prêt à recevoir des requêtes
+async function waitForComfyUI(host: string, port: string, vastId: number) {
+  const url = `http://${host}:${port}/system_stats`;
+  const INTERVAL_MS = 10_000;
+
+  while (true) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        console.log(`[instance] ComfyUI #${vastId} is ready`);
+        return;
+      }
+    } catch {
+      // pas encore prêt
+    }
+    console.log(
+      `[instance] ComfyUI #${vastId} not ready yet, retrying in ${INTERVAL_MS / 1000}s...`
+    );
+    await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS));
+  }
+}
+
 // Poll en background jusqu'à ce que l'instance soit ready
 async function provisionInstance(dbInstanceId: string, vastId: number) {
   const POLL_INTERVAL_MS = 30_000;
@@ -196,14 +218,18 @@ async function provisionInstance(dbInstanceId: string, vastId: number) {
 
       if (instance.actual_status === 'running') {
         const { host, port } = getInstanceEndpoint(instance);
-        console.log(`[instance] Instance #${vastId} ready at ${host}:${port}`);
+        console.log(
+          `[instance] Instance #${vastId} container running at ${host}:${port}, waiting for ComfyUI...`
+        );
+
+        await waitForComfyUI(host, port, vastId);
 
         await prisma.vastInstance.update({
           where: { id: dbInstanceId },
           data: { status: 'RUNNING', host, port },
         });
 
-        // Programmer la destruction automatique à partir de maintenant
+        console.log(`[instance] Instance #${vastId} ready`);
         scheduleAutoDestroy(dbInstanceId, vastId, INSTANCE_TIMEOUT_MINUTES);
         return;
       }
