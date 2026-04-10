@@ -26,11 +26,15 @@ This is a **Stable Diffusion image generation API** built on top of the Hono + P
 The RPi 3B+ acts as an **orchestrator and file server** — heavy work (SD inference) is offloaded to GPU instances rented on-demand via the **Vast.ai API**. Generated images are stored locally on the USB drive.
 
 ```
-POST /api/v1/generate  → { jobId }   (async, returns immediately)
-GET  /api/v1/jobs/:id  → status polling (PENDING → GENERATING → COMPLETED)
-GET  /api/v1/images    → list images
-GET  /api/v1/images/:filename → serve image
+POST /api/v1/generate              → { jobId }  txt2img (async)
+POST /api/v1/generate/img2img      → { jobId }  img2img multipart (async)
+GET  /api/v1/jobs/:id              → status polling (PENDING → GENERATING → COMPLETED)
+GET  /api/v1/images                → list images
+GET  /api/v1/images/:filename      → serve image
 DELETE /api/v1/images/:id
+POST /api/v1/instances             → create persistent GPU instance
+GET  /api/v1/instances             → list instances
+DELETE /api/v1/instances/:id       → destroy instance
 ```
 
 ## Infrastructure
@@ -117,17 +121,22 @@ model VastInstance {
 
 - `findCheapOffer()` — GPU avec `reliability >= 0.95`, `inet_down >= 500`, `dph_total >= $0.05`
 - `createInstance(offerId)` — template ComfyUI (`cc68218cbd560823cb841b721786077c`), provisioning script SDXL, Basic Auth credentials
-- `generateImage(host, port, params)` — soumet le workflow txt2img à ComfyUI, poll `/history`
+- `generateImage(host, port, params)` — workflow txt2img, poll `/history`
+- `generateImg2Img(host, port, params)` — workflow img2img (LoadImage → VAEEncode → KSampler → VAEDecode)
+- `uploadImageToComfy(host, port, buffer, filename)` — `POST /upload/image` multipart avant img2img
 - `downloadImage(host, port, filename)` — télécharge l'image générée
-- `COMFYUI_USER` / `COMFYUI_PASSWORD` — exportés pour `waitForComfyUI` dans les routes instances
+- `COMFYUI_USER` / `COMFYUI_PASSWORD` — exportés, utilisés partout pour Basic Auth
 
 ComfyUI REST API (via Caddy port 8188) :
+- `POST /upload/image` → upload source image pour img2img
 - `POST /prompt` → `GET /history/{prompt_id}` → `GET /view?filename=...`
 
 ## Key Patterns
 
 ### Async Job Pattern
-`POST /generate` crée un `GenerationJob` (PENDING) et retourne `{ jobId }` immédiatement. Un background async (fire-and-forget) avance le job à travers les états. En cas d'échec, status → FAILED + errorMessage, instance temporaire détruite.
+`POST /generate` et `POST /generate/img2img` créent un `GenerationJob` (PENDING) et retournent `{ jobId }` immédiatement. Un background async (fire-and-forget) avance le job à travers les états. En cas d'échec, status → FAILED + errorMessage, instance temporaire détruite.
+
+**img2img** : accepte `multipart/form-data` avec `image` (fichier) ou `sourceJobId` (job existant) + `denoiseStrength` (0.0-1.0, défaut 0.75). Uploade l'image source à ComfyUI via `POST /upload/image` avant de soumettre le workflow.
 
 ### Persistent Instances
 ```

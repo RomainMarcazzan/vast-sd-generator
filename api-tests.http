@@ -2,15 +2,15 @@
 # Utilise l'extension VS Code REST Client pour exécuter ces requêtes
 #
 # Flow typique (mode auto - instance temporaire) :
-#   1. POST /generate     → soumet un prompt, récupère un jobId
-#   2. GET /jobs/:id      → poll jusqu'à status COMPLETED (ou FAILED)
-#   3. GET /images/:file  → récupère l'image générée
+#   1. POST /generate           → soumet un prompt, récupère un jobId
+#   2. GET /jobs/:id            → poll jusqu'à status COMPLETED (ou FAILED)
+#   3. GET /images/:file        → récupère l'image générée
 #
 # Flow typique (mode persistant - économique pour itérations) :
 #   1. POST /instances              → retourne { id, status: "PROVISIONING" } immédiatement
-#   2. GET /instances               → poll jusqu'à status RUNNING (boot + download modèle ~5-10 min)
-#   3. POST /generate               → avec instanceId, génère image #1
-#   4. POST /generate               → avec instanceId, génère image #2
+#   2. GET /instances               → poll jusqu'à status RUNNING (~3 min)
+#   3. POST /generate               → avec instanceId, génère image #1 (~13s)
+#   4. POST /generate/img2img       → avec instanceId + image, affine image #1
 #   ... (itérez autant que vous voulez)
 #   5. DELETE /instances/:id        → détruit l'instance (arrête la facturation)
 #
@@ -20,7 +20,7 @@
 
 @baseUrl = http://localhost:3000
 @jobId = REPLACE_WITH_JOB_ID
-@instanceId = cmnsfmyle000066mssmpkbe0u
+@instanceId = REPLACE_WITH_INSTANCE_ID
 
 ### ============================================================================
 ### HEALTH
@@ -90,7 +90,7 @@ Content-Type: application/json
 
 ###
 
-### Générer une image avec tous les paramètres (mode auto)
+### Générer une image avec tous les paramètres
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
@@ -98,22 +98,69 @@ Content-Type: application/json
   "prompt": "a cyberpunk city at night, neon lights, rain, detailed",
   "negativePrompt": "blurry, low quality, distorted",
   "width": 1024,
-  "height": 768,
-  "steps": 30
+  "height": 1024,
+  "steps": 30,
+  "cfgScale": 7,
+  "sampler": "euler",
+  "scheduler": "normal",
+  "seed": 42,
+  "instanceId": "{{instanceId}}"
 }
 
 ###
 
-### Générer une image en 512x512 (plus rapide, moins de VRAM)
-POST {{baseUrl}}/api/v1/generate
-Content-Type: application/json
+### ============================================================================
+### IMG2IMG — Affiner une image existante
+### ============================================================================
 
-{
-  "prompt": "a cat wearing a top hat, oil painting style",
-  "width": 512,
-  "height": 512,
-  "steps": 15
-}
+### img2img depuis une image uploadée
+# denoiseStrength: 0.0 = identique, 1.0 = ignore l'image (= txt2img)
+# 0.5-0.75 recommandé pour garder la composition
+POST {{baseUrl}}/api/v1/generate/img2img
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="prompt"
+
+same scene but in winter, snow covered mountains
+--boundary
+Content-Disposition: form-data; name="denoiseStrength"
+
+0.6
+--boundary
+Content-Disposition: form-data; name="instanceId"
+
+{{instanceId}}
+--boundary
+Content-Disposition: form-data; name="image"; filename="source.png"
+Content-Type: image/png
+
+< ./data/images/{{jobId}}.png
+--boundary--
+
+###
+
+### img2img depuis un job existant (pas besoin d'uploader)
+POST {{baseUrl}}/api/v1/generate/img2img
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="prompt"
+
+same scene but at night, dark atmosphere
+--boundary
+Content-Disposition: form-data; name="sourceJobId"
+
+{{jobId}}
+--boundary
+Content-Disposition: form-data; name="denoiseStrength"
+
+0.5
+--boundary
+Content-Disposition: form-data; name="instanceId"
+
+{{instanceId}}
+--boundary--
 
 ###
 
