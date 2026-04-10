@@ -5,8 +5,12 @@ const COMFYUI_TEMPLATE_HASH = 'cc68218cbd560823cb841b721786077c';
 const COMFYUI_INTERNAL_PORT = '8188';
 export const COMFYUI_USER = 'vastai';
 export const COMFYUI_PASSWORD = 'comfyui123';
-const PROVISIONING_SCRIPT_URL =
-  'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-comfyui.sh';
+const PROVISIONING_SCRIPTS: Record<string, string> = {
+  IMAGE:
+    'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-comfyui.sh',
+  VIDEO:
+    'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-wan21.sh',
+};
 
 // --- Types ---
 
@@ -64,11 +68,11 @@ async function vastFetch(path: string, options: RequestInit = {}): Promise<Respo
 
 // --- Public API ---
 
-export async function findCheapOffer(): Promise<VastOffer> {
+export async function findCheapOffer(minVramMb = 12000): Promise<VastOffer> {
   const res = await vastFetch('/api/v0/bundles/', {
     method: 'POST',
     body: JSON.stringify({
-      gpu_ram: { gte: 12000 },
+      gpu_ram: { gte: minVramMb },
       reliability: { gte: 0.95 },
       inet_down: { gte: 500 },
       disk_bw: { gte: 200 },
@@ -89,14 +93,17 @@ export async function findCheapOffer(): Promise<VastOffer> {
   return data.offers[0];
 }
 
-export async function createInstance(offerId: number): Promise<number> {
+export async function createInstance(
+  offerId: number,
+  type: 'IMAGE' | 'VIDEO' = 'IMAGE'
+): Promise<number> {
   const res = await vastFetch(`/api/v0/asks/${offerId}/`, {
     method: 'PUT',
     body: JSON.stringify({
       template_hash_id: COMFYUI_TEMPLATE_HASH,
       env: {
         '-p 8188:8188': '1',
-        PROVISIONING_SCRIPT: PROVISIONING_SCRIPT_URL,
+        PROVISIONING_SCRIPT: PROVISIONING_SCRIPTS[type],
         WEB_USER: COMFYUI_USER,
         WEB_PASSWORD: COMFYUI_PASSWORD,
       },

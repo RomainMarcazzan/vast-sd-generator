@@ -59,6 +59,7 @@ model GeneratedImage {
 model VastInstance {
   id             String          @id @default(cuid())
   vastInstanceId String          @unique // ID de l'instance chez Vast.ai
+  type           InstanceType    @default(IMAGE)
   status         InstanceStatus  @default(PROVISIONING)
   host           String?         // IP publique
   port           String?         // Port mappé
@@ -69,6 +70,11 @@ model VastInstance {
   jobs           GenerationJob[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+}
+
+enum InstanceType {
+  IMAGE  // SDXL — 12GB VRAM min
+  VIDEO  // Wan 2.1 — 16GB VRAM min
 }
 
 enum InstanceStatus {

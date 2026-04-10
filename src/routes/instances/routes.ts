@@ -103,6 +103,7 @@ app.openapi(listInstancesRoute, async (c) => {
     instances.map((inst) => ({
       id: inst.id,
       vastInstanceId: inst.vastInstanceId,
+      type: inst.type,
       status: inst.status,
       host: inst.host,
       port: inst.port,
@@ -118,12 +119,16 @@ app.openapi(listInstancesRoute, async (c) => {
 
 // Create instance
 app.openapi(createInstanceRoute, async (c) => {
-  console.log('[instance] Searching for GPU offer...');
-  const offer = await findCheapOffer();
+  const body = c.req.valid('json');
+  const instanceType = body.type ?? 'IMAGE';
+  const minVram = instanceType === 'VIDEO' ? 16000 : 12000;
+
+  console.log(`[instance] Searching for GPU offer (type=${instanceType}, minVram=${minVram}MB)...`);
+  const offer = await findCheapOffer(minVram);
   console.log(`[instance] Found offer #${offer.id}: ${offer.gpu_name}`);
 
   console.log('[instance] Creating Vast.ai instance...');
-  const vastId = await createInstance(offer.id);
+  const vastId = await createInstance(offer.id, instanceType);
   console.log(`[instance] Instance #${vastId} created`);
 
   // Sauver en DB immédiatement avec status PROVISIONING
@@ -133,6 +138,7 @@ app.openapi(createInstanceRoute, async (c) => {
   const dbInstance = await prisma.vastInstance.create({
     data: {
       vastInstanceId: String(vastId),
+      type: instanceType,
       gpuName: offer.gpu_name,
       costPerHour: offer.dph_total,
       expiresAt,
@@ -146,6 +152,7 @@ app.openapi(createInstanceRoute, async (c) => {
     {
       id: dbInstance.id,
       vastInstanceId: dbInstance.vastInstanceId,
+      type: dbInstance.type,
       status: dbInstance.status,
       host: dbInstance.host,
       port: dbInstance.port,
