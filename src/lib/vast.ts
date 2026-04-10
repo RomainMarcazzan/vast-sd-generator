@@ -173,17 +173,21 @@ function buildTxt2ImgWorkflow(params: {
   width: number;
   height: number;
   steps: number;
+  cfgScale: number;
+  sampler: string;
+  scheduler: string;
+  seed?: number;
 }) {
   return {
     prompt: {
       '3': {
         class_type: 'KSampler',
         inputs: {
-          seed: Math.floor(Math.random() * 2 ** 32),
+          seed: params.seed ?? Math.floor(Math.random() * 2 ** 32),
           steps: params.steps,
-          cfg: 7,
-          sampler_name: 'euler',
-          scheduler: 'normal',
+          cfg: params.cfgScale,
+          sampler_name: params.sampler,
+          scheduler: params.scheduler,
           denoise: 1,
           model: ['4', 0],
           positive: ['6', 0],
@@ -246,6 +250,10 @@ export async function generateImage(
     width: number;
     height: number;
     steps: number;
+    cfgScale: number;
+    sampler: string;
+    scheduler: string;
+    seed?: number;
   }
 ): Promise<string> {
   const baseUrl = `http://${host}:${port}`;

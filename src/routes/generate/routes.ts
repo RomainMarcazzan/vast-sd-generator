@@ -105,6 +105,10 @@ async function processJob(jobId: string, persistentInstanceId?: string) {
       width: job.width,
       height: job.height,
       steps: job.steps,
+      cfgScale: job.cfgScale,
+      sampler: job.sampler,
+      scheduler: job.scheduler,
+      seed: job.seed !== null ? Number(job.seed) : undefined,
     });
     console.log(`[job:${jobId}] Image generated: ${outputFilename} [${elapsed(stepStart)}]`);
 
@@ -178,6 +182,10 @@ app.openapi(generateRoute, async (c) => {
       width: body.width,
       height: body.height,
       steps: body.steps,
+      cfgScale: body.cfgScale,
+      sampler: body.sampler,
+      scheduler: body.scheduler,
+      seed: body.seed ?? null,
     },
   });
 

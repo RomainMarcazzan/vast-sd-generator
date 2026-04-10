@@ -1,5 +1,0 @@
--- AlterEnum
-ALTER TYPE "InstanceStatus" ADD VALUE 'PROVISIONING';
-
--- AlterTable
-ALTER TABLE "VastInstance" ALTER COLUMN "status" SET DEFAULT 'PROVISIONING';

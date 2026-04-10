@@ -17,9 +17,13 @@ model GenerationJob {
   id             String         @id @default(cuid())
   prompt         String
   negativePrompt String?
-  width          Int            @default(512)
-  height         Int            @default(512)
+  width          Int            @default(1024)
+  height         Int            @default(1024)
   steps          Int            @default(20)
+  cfgScale       Float          @default(7)
+  sampler        String         @default("euler")
+  scheduler      String         @default("normal")
+  seed           BigInt?
   status         JobStatus      @default(PENDING)
   vastInstanceId String?
   errorMessage   String?
