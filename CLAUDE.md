@@ -198,6 +198,41 @@ SWAGGER_PASSWORD=admin
 - CI/CD : push `main` → GitHub Actions → SSH RPi → `git pull` + `docker compose up --build`
 - RPi SSH : `ssh -p 2222 romain@rpi.code-booking.fr`
 
+## Roadmap — Intégration video-platform
+
+vast-sd-generator est destiné à devenir le backend de génération d'assets pour un projet compagnon (`video-platform`) qui produit des documentaires YouTube complets (YouTube → transcription → script → assets → rendu Remotion).
+
+Le problème actuel dans video-platform : Replicate (FLUX.1.1 Pro + Kling AI) est trop coûteux, ce qui oblige à limiter le nombre d'images et vidéos par documentaire, dégradant la qualité narrative.
+
+### Stratégie d'assets (hybride)
+
+| Asset | Provider cible | Raison |
+|-------|---------------|--------|
+| Images | FLUX.1 [dev] fp8 sur Vast.ai | Qualité proche de FLUX.1.1 Pro, coût marginal à l'heure |
+| Vidéos B-roll | Wan 2.1 sur Vast.ai | Quantité illimitée, coût quasi nul |
+| Vidéos hero shots | Kling via Replicate | Kling n'est pas open source — uniquement API |
+
+**Note** : Kling AI (Kuaishou) n'est pas self-hostable. Si on veut des vidéos moins chères, Wan 2.1 est la seule option self-hosted. À tester sur des prompts documentaires avant de trancher.
+
+### Prochaines étapes techniques
+
+1. **Ajouter FLUX.1 [dev] fp8 à vast-sd-generator**
+   - Modèle ~12GB, tourne sur 12-16GB VRAM (même instance IMAGE existante)
+   - Nouveau workflow ComfyUI FLUX (différent du workflow SDXL)
+   - Nouveau script de provisioning ou mise à jour de `provision-comfyui.sh`
+   - Nouveau endpoint `POST /api/v1/generate/flux` ou paramètre `model: 'flux' | 'sdxl'`
+
+2. **Tester Wan 2.1 pour du B-roll documentaire**
+   - Évaluer la qualité vs Kling AI sur des prompts type documentaire
+   - Si acceptable → Wan 2.1 pour tous les clips, économies majeures
+   - Si non → Wan 2.1 pour B-roll générique, Kling pour les plans clés
+
+3. **Intégrer vast-sd-generator comme microservice dans video-platform**
+   - Pattern : video-platform appelle l'API REST de vast-sd-generator au lieu de Replicate
+   - Adapter au pattern async job (retourne `jobId`, poll jusqu'à COMPLETED)
+   - Gérer le warmup des instances (IMAGE ~3 min, VIDEO ~15-30 min + modèles)
+   - Stratégie : instance persistante partagée pour toute une session de génération
+
 ## Code Style
 
 Biome : single quotes, semicolons, 2-space indent, 100-char line width, trailing commas ES5.
