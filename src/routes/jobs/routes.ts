@@ -32,6 +32,8 @@ app.openapi(getJobRoute, async (c) => {
       sampler: job.sampler,
       scheduler: job.scheduler,
       seed: job.seed !== null ? Number(job.seed) : null,
+      denoiseStrength: job.denoiseStrength,
+      sourceImagePath: job.sourceImagePath,
       status: job.status,
       errorMessage: job.errorMessage,
       imageUrl,

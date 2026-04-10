@@ -9,9 +9,17 @@ export const generateRequestSchema = z.object({
   height: z.number().int().min(256).max(2048).default(1024),
   steps: z.number().int().min(1).max(100).default(20),
   cfgScale: z.number().min(1).max(20).default(7).describe('Classifier-free guidance scale'),
-  sampler: z.string().default('euler').describe('Sampler name (e.g. euler, dpm++2m, euler_ancestral)'),
+  sampler: z
+    .string()
+    .default('euler')
+    .describe('Sampler name (e.g. euler, dpm++2m, euler_ancestral)'),
   scheduler: z.string().default('normal').describe('Scheduler (e.g. normal, karras, exponential)'),
-  seed: z.number().int().min(0).optional().describe('Fixed seed for reproducibility — omit for random'),
+  seed: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe('Fixed seed for reproducibility — omit for random'),
   instanceId: z.string().optional().describe('Optional persistent instance ID to reuse'),
 });
 
@@ -36,6 +44,8 @@ export const jobResponseSchema = z.object({
   sampler: z.string(),
   scheduler: z.string(),
   seed: z.number().nullable(),
+  denoiseStrength: z.number().nullable(),
+  sourceImagePath: z.string().nullable(),
   status: jobStatusSchema,
   errorMessage: z.string().nullable(),
   imageUrl: z.string().nullable(),

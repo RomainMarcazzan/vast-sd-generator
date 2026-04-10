@@ -24,6 +24,8 @@ model GenerationJob {
   sampler        String         @default("euler")
   scheduler      String         @default("normal")
   seed           BigInt?
+  denoiseStrength Float?        // null = txt2img, set for img2img
+  sourceImagePath String?       // source image path for img2img
   status         JobStatus      @default(PENDING)
   vastInstanceId String?
   errorMessage   String?

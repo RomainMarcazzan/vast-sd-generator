@@ -167,6 +167,39 @@ function comfyHeaders(): Record<string, string> {
   };
 }
 
+function comfyAuthHeader(): Record<string, string> {
+  const credentials = Buffer.from(`${COMFYUI_USER}:${COMFYUI_PASSWORD}`).toString('base64');
+  return { Authorization: `Basic ${credentials}` };
+}
+
+export async function uploadImageToComfy(
+  host: string,
+  port: string,
+  imageBuffer: Buffer,
+  filename: string
+): Promise<string> {
+  const formData = new FormData();
+  const arrayBuffer = imageBuffer.buffer.slice(
+    imageBuffer.byteOffset,
+    imageBuffer.byteOffset + imageBuffer.byteLength
+  ) as ArrayBuffer;
+  formData.append('image', new Blob([arrayBuffer], { type: 'image/png' }), filename);
+  formData.append('overwrite', 'true');
+
+  const res = await fetch(`http://${host}:${port}/upload/image`, {
+    method: 'POST',
+    headers: comfyAuthHeader(),
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new Error(`ComfyUI image upload failed: ${res.status}`);
+  }
+
+  const data = (await res.json()) as { name: string };
+  return data.name;
+}
+
 function buildTxt2ImgWorkflow(params: {
   prompt: string;
   negativePrompt?: string;
@@ -239,6 +272,121 @@ function buildTxt2ImgWorkflow(params: {
       },
     },
   };
+}
+
+function buildImg2ImgWorkflow(params: {
+  prompt: string;
+  negativePrompt?: string;
+  steps: number;
+  cfgScale: number;
+  sampler: string;
+  scheduler: string;
+  denoiseStrength: number;
+  seed?: number;
+  comfyImageFilename: string;
+}) {
+  return {
+    prompt: {
+      '1': {
+        class_type: 'LoadImage',
+        inputs: { image: params.comfyImageFilename },
+      },
+      '2': {
+        class_type: 'VAEEncode',
+        inputs: { pixels: ['1', 0], vae: ['5', 2] },
+      },
+      '3': {
+        class_type: 'KSampler',
+        inputs: {
+          seed: params.seed ?? Math.floor(Math.random() * 2 ** 32),
+          steps: params.steps,
+          cfg: params.cfgScale,
+          sampler_name: params.sampler,
+          scheduler: params.scheduler,
+          denoise: params.denoiseStrength,
+          model: ['5', 0],
+          positive: ['6', 0],
+          negative: ['7', 0],
+          latent_image: ['2', 0],
+        },
+      },
+      '4': {
+        class_type: 'VAEDecode',
+        inputs: { samples: ['3', 0], vae: ['5', 2] },
+      },
+      '5': {
+        class_type: 'CheckpointLoaderSimple',
+        inputs: { ckpt_name: 'sd_xl_base_1.0.safetensors' },
+      },
+      '6': {
+        class_type: 'CLIPTextEncode',
+        inputs: { text: params.prompt, clip: ['5', 1] },
+      },
+      '7': {
+        class_type: 'CLIPTextEncode',
+        inputs: { text: params.negativePrompt ?? '', clip: ['5', 1] },
+      },
+      '8': {
+        class_type: 'SaveImage',
+        inputs: { filename_prefix: 'output', images: ['4', 0] },
+      },
+    },
+  };
+}
+
+export async function generateImg2Img(
+  host: string,
+  port: string,
+  params: {
+    prompt: string;
+    negativePrompt?: string;
+    steps: number;
+    cfgScale: number;
+    sampler: string;
+    scheduler: string;
+    denoiseStrength: number;
+    seed?: number;
+    comfyImageFilename: string;
+  }
+): Promise<string> {
+  const baseUrl = `http://${host}:${port}`;
+  const workflow = buildImg2ImgWorkflow(params);
+
+  const promptRes = await fetch(`${baseUrl}/prompt`, {
+    method: 'POST',
+    headers: comfyHeaders(),
+    body: JSON.stringify(workflow),
+  });
+
+  if (!promptRes.ok) {
+    throw new Error(`ComfyUI img2img submission failed: ${promptRes.status}`);
+  }
+
+  const { prompt_id } = (await promptRes.json()) as ComfyPromptResponse;
+
+  const start = Date.now();
+  const timeout = 5 * 60 * 1000;
+
+  while (Date.now() - start < timeout) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    const historyRes = await fetch(`${baseUrl}/history/${prompt_id}`, {
+      headers: comfyHeaders(),
+    });
+    if (!historyRes.ok) continue;
+
+    const history = (await historyRes.json()) as Record<string, ComfyHistoryEntry>;
+    const entry = history[prompt_id];
+    if (!entry) continue;
+
+    for (const output of Object.values(entry.outputs)) {
+      if (output.images?.length) {
+        return output.images[0].filename;
+      }
+    }
+  }
+
+  throw new Error('ComfyUI img2img generation timed out');
 }
 
 export async function generateImage(
