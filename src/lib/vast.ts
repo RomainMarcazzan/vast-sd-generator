@@ -465,6 +465,158 @@ export async function downloadImage(host: string, port: string, filename: string
   return Buffer.from(await res.arrayBuffer());
 }
 
+function buildTxt2VidWorkflow(params: {
+  prompt: string;
+  negativePrompt?: string;
+  width: number;
+  height: number;
+  frames: number;
+  fps: number;
+  steps: number;
+  cfgScale: number;
+  seed?: number;
+}) {
+  const seed = params.seed ?? Math.floor(Math.random() * 2 ** 32);
+  return {
+    prompt: {
+      '1': {
+        class_type: 'CLIPLoader',
+        inputs: { clip_name: 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', type: 'wan' },
+      },
+      '2': {
+        class_type: 'CLIPTextEncode',
+        inputs: { text: params.prompt, clip: ['1', 0] },
+      },
+      '3': {
+        class_type: 'CLIPTextEncode',
+        inputs: { text: params.negativePrompt ?? '', clip: ['1', 0] },
+      },
+      '4': {
+        class_type: 'VAELoader',
+        inputs: { vae_name: 'wan_2.1_vae.safetensors' },
+      },
+      '5': {
+        class_type: 'UNETLoader',
+        inputs: { unet_name: 'wan2.1_t2v_14B_fp8_e4m3fn.safetensors', weight_dtype: 'default' },
+      },
+      '6': {
+        class_type: 'ModelSamplingSD3',
+        inputs: { shift: 8, model: ['5', 0] },
+      },
+      '7': {
+        class_type: 'EmptyHunyuanLatentVideo',
+        inputs: {
+          width: params.width,
+          height: params.height,
+          length: params.frames,
+          batch_size: 1,
+        },
+      },
+      '8': {
+        class_type: 'KSampler',
+        inputs: {
+          seed,
+          steps: params.steps,
+          cfg: params.cfgScale,
+          sampler_name: 'euler',
+          scheduler: 'simple',
+          denoise: 1,
+          model: ['6', 0],
+          positive: ['2', 0],
+          negative: ['3', 0],
+          latent_image: ['7', 0],
+        },
+      },
+      '9': {
+        class_type: 'VAEDecode',
+        inputs: { samples: ['8', 0], vae: ['4', 0] },
+      },
+      '10': {
+        class_type: 'VHS_VideoCombine',
+        inputs: {
+          images: ['9', 0],
+          frame_rate: params.fps,
+          loop_count: 0,
+          filename_prefix: 'video/output',
+          format: 'video/h264-mp4',
+          save_output: true,
+        },
+      },
+    },
+  };
+}
+
+export async function generateVideo(
+  host: string,
+  port: string,
+  params: {
+    prompt: string;
+    negativePrompt?: string;
+    width: number;
+    height: number;
+    frames: number;
+    fps: number;
+    steps: number;
+    cfgScale: number;
+    seed?: number;
+  }
+): Promise<string> {
+  const baseUrl = `http://${host}:${port}`;
+  const workflow = buildTxt2VidWorkflow(params);
+
+  const promptRes = await fetch(`${baseUrl}/prompt`, {
+    method: 'POST',
+    headers: comfyHeaders(),
+    body: JSON.stringify(workflow),
+  });
+
+  if (!promptRes.ok) {
+    throw new Error(`ComfyUI video submission failed: ${promptRes.status}`);
+  }
+
+  const { prompt_id } = (await promptRes.json()) as ComfyPromptResponse;
+
+  const start = Date.now();
+  const timeout = 20 * 60 * 1000; // 20 minutes for video
+
+  while (Date.now() - start < timeout) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    const historyRes = await fetch(`${baseUrl}/history/${prompt_id}`, {
+      headers: comfyHeaders(),
+    });
+    if (!historyRes.ok) continue;
+
+    const history = (await historyRes.json()) as Record<string, ComfyHistoryEntry>;
+    const entry = history[prompt_id];
+    if (!entry) continue;
+
+    for (const output of Object.values(entry.outputs)) {
+      // VHS_VideoCombine stores output under "gifs" key
+      const gifs = (output as { gifs?: Array<{ filename: string; subfolder: string }> }).gifs;
+      if (gifs?.length) {
+        const { filename, subfolder } = gifs[0];
+        return subfolder ? `${subfolder}/${filename}` : filename;
+      }
+    }
+  }
+
+  throw new Error('ComfyUI video generation timed out (20 min)');
+}
+
+export async function downloadVideo(host: string, port: string, filename: string): Promise<Buffer> {
+  const res = await fetch(
+    `http://${host}:${port}/view?filename=${encodeURIComponent(filename)}&type=output`,
+    { headers: comfyAuthHeader() }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to download video from ComfyUI: ${res.status}`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
 export async function destroyInstance(instanceId: number): Promise<void> {
   await vastFetch(`/api/v0/instances/${instanceId}/`, { method: 'DELETE' });
 }

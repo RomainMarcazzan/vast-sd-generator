@@ -1,12 +1,12 @@
 # SD Generator API — Test Suite
 # Utilise l'extension VS Code REST Client pour exécuter ces requêtes
 #
-# Flow typique (mode auto - instance temporaire) :
+# Flow typique images (mode auto - instance temporaire) :
 #   1. POST /generate           → soumet un prompt, récupère un jobId
 #   2. GET /jobs/:id            → poll jusqu'à status COMPLETED (ou FAILED)
 #   3. GET /images/:file        → récupère l'image générée
 #
-# Flow typique (mode persistant - économique pour itérations) :
+# Flow typique images (mode persistant - économique pour itérations) :
 #   1. POST /instances              → retourne { id, status: "PROVISIONING" } immédiatement
 #   2. GET /instances               → poll jusqu'à status RUNNING (~3 min)
 #   3. POST /generate               → avec instanceId, génère image #1 (~13s)
@@ -14,7 +14,15 @@
 #   ... (itérez autant que vous voulez)
 #   5. DELETE /instances/:id        → détruit l'instance (arrête la facturation)
 #
-# ⚠️  POST /instances / POST /generate louent un GPU sur Vast.ai (~$0.10-0.30/h)
+# Flow typique vidéo (Wan 2.1 14B) :
+#   1. POST /instances { type: "VIDEO" } → instance 16GB VRAM (~3-5 min boot + ~26GB models)
+#   2. GET /instances               → poll jusqu'à status RUNNING
+#   3. POST /generate/video         → avec instanceId, génère vidéo (~3-10 min)
+#   4. GET /jobs/:id                → poll jusqu'à COMPLETED, récupère videoUrl
+#   5. GET /videos/:filename        → télécharge la vidéo mp4
+#   6. DELETE /instances/:id        → détruit l'instance
+#
+# ⚠️  POST /instances / POST /generate louent un GPU sur Vast.ai (~$0.10-0.50/h)
 #     En mode persistant, l'instance reste active 30 min après la création puis auto-destruction
 #     Vérifiez votre dashboard Vast.ai : https://cloud.vast.ai/instances/
 
@@ -40,14 +48,27 @@ GET {{baseUrl}}/api/v1/instances
 
 ###
 
-### Créer une instance persistante (pour itérations multiples)
-# Retourne { id, vastInstanceId, host, port, expiresAt }
+### Créer une instance IMAGE (SDXL, 12GB VRAM)
+# Retourne { id, vastInstanceId, host, port, expiresAt, type }
 # L'instance s'auto-détruit après 30 min d'inactivité
 POST {{baseUrl}}/api/v1/instances
 Content-Type: application/json
 
 {
-  "label": "Test session"
+  "type": "IMAGE",
+  "label": "Test session image"
+}
+
+###
+
+### Créer une instance VIDEO (Wan 2.1, 16GB VRAM)
+# Boot + téléchargement modèles ~26GB — prévoir 15-30 min avant RUNNING
+POST {{baseUrl}}/api/v1/instances
+Content-Type: application/json
+
+{
+  "type": "VIDEO",
+  "label": "Test session video"
 }
 
 ###
@@ -106,6 +127,56 @@ Content-Type: application/json
   "seed": 42,
   "instanceId": "{{instanceId}}"
 }
+
+###
+
+### ============================================================================
+### VIDEO — Générer une vidéo avec Wan 2.1 14B (txt2vid)
+### ============================================================================
+
+### Générer une vidéo (nécessite une instance VIDEO RUNNING)
+# Retourne { jobId } immédiatement — génération en background (~3-10 min)
+# Résultat : mp4, 832x480, 81 frames, 16fps
+POST {{baseUrl}}/api/v1/generate/video
+Content-Type: application/json
+
+{
+  "prompt": "a beautiful sunset over the ocean, waves crashing, cinematic",
+  "instanceId": "{{instanceId}}"
+}
+
+###
+
+### Générer une vidéo avec tous les paramètres
+POST {{baseUrl}}/api/v1/generate/video
+Content-Type: application/json
+
+{
+  "prompt": "a dragon flying over mountains, fantasy, epic, detailed",
+  "negativePrompt": "blurry, low quality",
+  "width": 832,
+  "height": 480,
+  "steps": 20,
+  "cfgScale": 6,
+  "scheduler": "simple",
+  "instanceId": "{{instanceId}}"
+}
+
+###
+
+### Lister toutes les vidéos générées
+GET {{baseUrl}}/api/v1/videos
+
+###
+
+### Récupérer une vidéo (retourne le fichier mp4)
+# Le filename est de la forme {jobId}.mp4
+GET {{baseUrl}}/api/v1/videos/{{jobId}}.mp4
+
+###
+
+### Supprimer une vidéo (par son ID)
+# DELETE {{baseUrl}}/api/v1/videos/REPLACE_WITH_VIDEO_ID
 
 ###
 
@@ -279,6 +350,53 @@ GET {{baseUrl}}/api/v1/jobs/{{jobId}}
 ###
 
 ### 5. Détruire l'instance quand vous avez fini
+DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
+
+###
+
+### ============================================================================
+### EXEMPLE COMPLET — Session de génération vidéo avec instance persistante
+### ============================================================================
+
+### 1. Créer une instance VIDEO (16GB VRAM — ~15-30 min boot + download modèles)
+POST {{baseUrl}}/api/v1/instances
+Content-Type: application/json
+
+{
+  "type": "VIDEO",
+  "label": "Video session"
+}
+
+###
+
+### 2. Surveiller jusqu'à RUNNING (mettez l'id retourné dans @instanceId)
+GET {{baseUrl}}/api/v1/instances
+
+###
+
+### 3. Générer une vidéo
+POST {{baseUrl}}/api/v1/generate/video
+Content-Type: application/json
+
+{
+  "prompt": "a cat playing in autumn leaves, slow motion, cinematic",
+  "instanceId": "{{instanceId}}"
+}
+
+###
+
+### 4. Vérifier le status (mettez le jobId retourné dans @jobId)
+# Quand COMPLETED, videoUrl contient l'URL de la vidéo
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}
+
+###
+
+### 5. Télécharger la vidéo
+GET {{baseUrl}}/api/v1/videos/{{jobId}}.mp4
+
+###
+
+### 6. Détruire l'instance
 DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
 
 ###

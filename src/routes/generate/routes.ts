@@ -8,9 +8,11 @@ import {
   createInstance,
   destroyInstance,
   downloadImage,
+  downloadVideo,
   findCheapOffer,
   generateImage,
   generateImg2Img,
+  generateVideo,
   getInstanceEndpoint,
   pollUntilReady,
   uploadImageToComfy,
@@ -335,6 +337,185 @@ async function processImg2ImgJob(jobId: string, persistentInstanceId?: string) {
     }
   }
 }
+
+async function processVideoJob(jobId: string, persistentInstanceId?: string) {
+  let vastInstanceId: number | null = null;
+  let isPersistentInstance = false;
+  const jobStart = Date.now();
+
+  try {
+    let host: string;
+    let port: string;
+
+    if (persistentInstanceId) {
+      console.log(`[video:${jobId}] Using persistent instance ${persistentInstanceId}...`);
+      const instance = await prisma.vastInstance.findUnique({
+        where: { id: persistentInstanceId },
+      });
+
+      if (!instance || instance.status !== 'RUNNING' || !instance.host || !instance.port) {
+        throw new Error('Persistent instance not available');
+      }
+      if (instance.type !== 'VIDEO') {
+        throw new Error('Instance type must be VIDEO for video generation');
+      }
+
+      host = instance.host;
+      port = instance.port;
+      vastInstanceId = Number(instance.vastInstanceId);
+      isPersistentInstance = true;
+
+      await prisma.vastInstance.update({
+        where: { id: persistentInstanceId },
+        data: { lastUsedAt: new Date() },
+      });
+      await prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'GENERATING',
+          vastInstanceId: instance.vastInstanceId,
+          instanceId: persistentInstanceId,
+        },
+      });
+    } else {
+      let stepStart = Date.now();
+      console.log(`[video:${jobId}] Searching for GPU offer (VIDEO, 16GB VRAM)...`);
+      const offer = await findCheapOffer(16000);
+      console.log(
+        `[video:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} [${elapsed(stepStart)}]`
+      );
+
+      stepStart = Date.now();
+      const instanceId = await createInstance(offer.id, 'VIDEO');
+      vastInstanceId = instanceId;
+      console.log(`[video:${jobId}] Instance #${instanceId} created [${elapsed(stepStart)}]`);
+
+      await prisma.generationJob.update({
+        where: { id: jobId },
+        data: { status: 'PROVISIONING', vastInstanceId: String(instanceId) },
+      });
+
+      stepStart = Date.now();
+      const instance = await pollUntilReady(instanceId);
+      const endpoint = getInstanceEndpoint(instance);
+      host = endpoint.host;
+      port = endpoint.port;
+      console.log(`[video:${jobId}] Instance ready at ${host}:${port} [${elapsed(stepStart)}]`);
+
+      await prisma.generationJob.update({ where: { id: jobId }, data: { status: 'GENERATING' } });
+    }
+
+    const job = await prisma.generationJob.findUniqueOrThrow({ where: { id: jobId } });
+
+    const stepStart = Date.now();
+    console.log(`[video:${jobId}] Sending prompt to ComfyUI (Wan 2.1)...`);
+    const outputFilename = await generateVideo(host, port, {
+      prompt: job.prompt,
+      negativePrompt: job.negativePrompt ?? undefined,
+      width: job.width,
+      height: job.height,
+      frames: 81,
+      fps: 16,
+      steps: job.steps,
+      cfgScale: job.cfgScale,
+      seed: job.seed !== null ? Number(job.seed) : undefined,
+    });
+    console.log(`[video:${jobId}] Video generated: ${outputFilename} [${elapsed(stepStart)}]`);
+
+    const downloadStart = Date.now();
+    console.log(`[video:${jobId}] Downloading video...`);
+    const videoBuffer = await downloadVideo(host, port, outputFilename);
+    console.log(
+      `[video:${jobId}] Downloaded ${(videoBuffer.length / 1024 / 1024).toFixed(1)}MB [${elapsed(downloadStart)}]`
+    );
+
+    const storagePath = env.IMAGES_STORAGE_PATH;
+    if (!existsSync(storagePath)) mkdirSync(storagePath, { recursive: true });
+
+    const filename = `${jobId}.mp4`;
+    const filePath = join(storagePath, filename);
+    writeFileSync(filePath, videoBuffer);
+    const fileStats = statSync(filePath);
+
+    await prisma.generatedVideo.create({
+      data: {
+        filename,
+        path: filePath,
+        sizeBytes: fileStats.size,
+        width: job.width,
+        height: job.height,
+        fps: 16,
+        frames: 81,
+        jobId,
+      },
+    });
+
+    await prisma.generationJob.update({ where: { id: jobId }, data: { status: 'COMPLETED' } });
+    console.log(`[video:${jobId}] ✓ Completed [total: ${elapsed(jobStart)}]`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[video:${jobId}] ✗ Failed after ${elapsed(jobStart)}: ${message}`);
+    await prisma.generationJob
+      .update({ where: { id: jobId }, data: { status: 'FAILED', errorMessage: message } })
+      .catch(() => {});
+  } finally {
+    if (vastInstanceId && !isPersistentInstance) {
+      await destroyInstance(vastInstanceId).catch(() => {});
+    }
+  }
+}
+
+app.post('/video', async (c) => {
+  let body: {
+    prompt?: unknown;
+    negativePrompt?: unknown;
+    width?: unknown;
+    height?: unknown;
+    steps?: unknown;
+    cfgScale?: unknown;
+    sampler?: unknown;
+    scheduler?: unknown;
+    seed?: unknown;
+    instanceId?: unknown;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 422);
+  }
+
+  const prompt = body.prompt;
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    return c.json({ error: 'prompt is required' }, 422);
+  }
+
+  const instanceId = body.instanceId;
+  if (instanceId && typeof instanceId === 'string') {
+    const instance = await prisma.vastInstance.findUnique({ where: { id: instanceId } });
+    if (instance && instance.type !== 'VIDEO') {
+      return c.json({ error: 'instanceId must reference a VIDEO instance' }, 422);
+    }
+  }
+
+  const job = await prisma.generationJob.create({
+    data: {
+      prompt: prompt.trim(),
+      negativePrompt: typeof body.negativePrompt === 'string' ? body.negativePrompt : null,
+      width: Number(body.width ?? 832),
+      height: Number(body.height ?? 480),
+      steps: Number(body.steps ?? 20),
+      cfgScale: Number(body.cfgScale ?? 6),
+      sampler: typeof body.sampler === 'string' ? body.sampler : 'euler',
+      scheduler: typeof body.scheduler === 'string' ? body.scheduler : 'simple',
+      seed: body.seed != null ? Number(body.seed) : null,
+      mediaType: 'VIDEO',
+    },
+  });
+
+  processVideoJob(job.id, typeof instanceId === 'string' ? instanceId : undefined);
+
+  return c.json({ jobId: job.id }, 202);
+});
 
 app.post('/img2img', async (c) => {
   let formData: FormData;

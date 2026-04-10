@@ -46,9 +46,11 @@ export const jobResponseSchema = z.object({
   seed: z.number().nullable(),
   denoiseStrength: z.number().nullable(),
   sourceImagePath: z.string().nullable(),
+  mediaType: z.enum(['IMAGE', 'VIDEO']),
   status: jobStatusSchema,
   errorMessage: z.string().nullable(),
   imageUrl: z.string().nullable(),
+  videoUrl: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

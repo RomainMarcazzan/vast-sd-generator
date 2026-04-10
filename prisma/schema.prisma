@@ -26,14 +26,21 @@ model GenerationJob {
   seed           BigInt?
   denoiseStrength Float?        // null = txt2img, set for img2img
   sourceImagePath String?       // source image path for img2img
+  mediaType      MediaType      @default(IMAGE)
   status         JobStatus      @default(PENDING)
   vastInstanceId String?
   errorMessage   String?
   image          GeneratedImage?
+  video          GeneratedVideo?
   instanceId     String?        // Référence à une instance persistante (optionnel)
   instance       VastInstance?  @relation(fields: [instanceId], references: [id])
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
 }
 
 enum JobStatus {
@@ -51,6 +58,20 @@ model GeneratedImage {
   sizeBytes Int
   width     Int
   height    Int
+  jobId     String        @unique
+  job       GenerationJob @relation(fields: [jobId], references: [id])
+  createdAt DateTime      @default(now())
+}
+
+model GeneratedVideo {
+  id        String        @id @default(cuid())
+  filename  String        @unique
+  path      String
+  sizeBytes Int
+  width     Int
+  height    Int
+  fps       Int           @default(16)
+  frames    Int           @default(81)
   jobId     String        @unique
   job       GenerationJob @relation(fields: [jobId], references: [id])
   createdAt DateTime      @default(now())

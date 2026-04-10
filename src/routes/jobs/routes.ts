@@ -11,7 +11,7 @@ app.openapi(getJobRoute, async (c) => {
 
   const job = await prisma.generationJob.findUnique({
     where: { id },
-    include: { image: true },
+    include: { image: true, video: true },
   });
 
   if (!job) {
@@ -19,6 +19,7 @@ app.openapi(getJobRoute, async (c) => {
   }
 
   const imageUrl = job.image ? `${env.SERVER_URL}/api/v1/images/${job.image.filename}` : null;
+  const videoUrl = job.video ? `${env.SERVER_URL}/api/v1/videos/${job.video.filename}` : null;
 
   return c.json(
     {
@@ -34,9 +35,11 @@ app.openapi(getJobRoute, async (c) => {
       seed: job.seed !== null ? Number(job.seed) : null,
       denoiseStrength: job.denoiseStrength,
       sourceImagePath: job.sourceImagePath,
+      mediaType: job.mediaType,
       status: job.status,
       errorMessage: job.errorMessage,
       imageUrl,
+      videoUrl,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     },

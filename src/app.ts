@@ -10,6 +10,7 @@ import generate from './routes/generate/index.js';
 import images from './routes/images/index.js';
 import instances from './routes/instances/index.js';
 import jobs from './routes/jobs/index.js';
+import videos from './routes/videos/index.js';
 
 // Define types for environment bindings and context variables
 type Bindings = {
@@ -73,6 +74,7 @@ app.route('/api/v1/generate', generate);
 app.route('/api/v1/jobs', jobs);
 app.route('/api/v1/images', images);
 app.route('/api/v1/instances', instances);
+app.route('/api/v1/videos', videos);
 
 // Protect Swagger UI with Basic Auth
 const swaggerAuth = basicAuth({ username: env.SWAGGER_USER, password: env.SWAGGER_PASSWORD });
