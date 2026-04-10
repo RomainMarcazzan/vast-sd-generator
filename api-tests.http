@@ -20,7 +20,7 @@
 
 @baseUrl = http://localhost:3000
 @jobId = REPLACE_WITH_JOB_ID
-@instanceId = REPLACE_WITH_INSTANCE_ID
+@instanceId = cmnsfmyle000066mssmpkbe0u
 
 ### ============================================================================
 ### HEALTH

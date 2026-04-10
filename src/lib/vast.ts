@@ -3,6 +3,8 @@ import { env } from '../config/env.js';
 const VAST_API_BASE = 'https://console.vast.ai';
 const COMFYUI_TEMPLATE_HASH = 'cc68218cbd560823cb841b721786077c';
 const COMFYUI_INTERNAL_PORT = '8188';
+export const COMFYUI_USER = 'vastai';
+export const COMFYUI_PASSWORD = 'comfyui123';
 const PROVISIONING_SCRIPT_URL =
   'https://raw.githubusercontent.com/RomainMarcazzan/vast-sd-generator/main/scripts/provision-comfyui.sh';
 
@@ -95,7 +97,8 @@ export async function createInstance(offerId: number): Promise<number> {
       env: {
         '-p 8188:8188': '1',
         PROVISIONING_SCRIPT: PROVISIONING_SCRIPT_URL,
-        WEB_ENABLE_AUTH: 'false',
+        WEB_USER: COMFYUI_USER,
+        WEB_PASSWORD: COMFYUI_PASSWORD,
       },
     }),
   });
@@ -155,6 +158,14 @@ export function getInstanceEndpoint(instance: VastInstance): { host: string; por
 }
 
 // --- ComfyUI API ---
+
+function comfyHeaders(): Record<string, string> {
+  const credentials = Buffer.from(`${COMFYUI_USER}:${COMFYUI_PASSWORD}`).toString('base64');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Basic ${credentials}`,
+  };
+}
 
 function buildTxt2ImgWorkflow(params: {
   prompt: string;
@@ -243,7 +254,7 @@ export async function generateImage(
   // Submit prompt
   const promptRes = await fetch(`${baseUrl}/prompt`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: comfyHeaders(),
     body: JSON.stringify(workflow),
   });
 
@@ -260,7 +271,7 @@ export async function generateImage(
   while (Date.now() - start < timeout) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const historyRes = await fetch(`${baseUrl}/history/${prompt_id}`);
+    const historyRes = await fetch(`${baseUrl}/history/${prompt_id}`, { headers: comfyHeaders() });
     if (!historyRes.ok) continue;
 
     const history = (await historyRes.json()) as Record<string, ComfyHistoryEntry>;
@@ -280,7 +291,9 @@ export async function generateImage(
 }
 
 export async function downloadImage(host: string, port: string, filename: string): Promise<Buffer> {
-  const res = await fetch(`http://${host}:${port}/view?filename=${encodeURIComponent(filename)}`);
+  const res = await fetch(`http://${host}:${port}/view?filename=${encodeURIComponent(filename)}`, {
+    headers: comfyHeaders(),
+  });
 
   if (!res.ok) {
     throw new Error(`Failed to download image from ComfyUI: ${res.status}`);

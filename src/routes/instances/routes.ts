@@ -2,6 +2,8 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { defaultHook } from '../../lib/error-handler.js';
 import { prisma } from '../../lib/prisma.js';
 import {
+  COMFYUI_PASSWORD,
+  COMFYUI_USER,
   createInstance,
   destroyInstance,
   findCheapOffer,
@@ -189,7 +191,11 @@ async function waitForComfyUI(host: string, port: string, vastId: number) {
 
   while (true) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const credentials = Buffer.from(`${COMFYUI_USER}:${COMFYUI_PASSWORD}`).toString('base64');
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(5000),
+        headers: { Authorization: `Basic ${credentials}` },
+      });
       console.log(`[instance] ComfyUI #${vastId} /system_stats → HTTP ${res.status}`);
       if (res.ok) {
         console.log(`[instance] ComfyUI #${vastId} is ready`);

@@ -2,29 +2,23 @@
 
 This file provides guidance to Claude Code when working with this repository.
 
-## TODO — À tester demain (session du 2026-04-09)
+## Statut — Pipeline validé end-to-end (2026-04-10)
 
-Le code est prêt mais n'a pas encore été validé end-to-end. Reprendre dans cet ordre :
+✅ Pipeline complet fonctionnel :
+- `POST /api/v1/instances` → instance RUNNING en ~3 min
+- `POST /api/v1/generate` avec `instanceId` → image générée en ~13s (10s inference SDXL)
+- Image téléchargée et stockée dans `IMAGES_STORAGE_PATH`
+- Instance persistante : 2ème génération en 12.8s (modèle déjà en VRAM)
 
-1. **Créer une instance** via `POST /api/v1/instances` et surveiller les logs serveur
-   - Vérifier que `waitForComfyUI` passe (ne reste plus bloqué en boucle)
-   - La config correcte est maintenant en place : port `8188` (Caddy) + `WEB_ENABLE_AUTH=false`
+**Après un restart du serveur** : l'instance reste utilisable. Elle est en DB avec status `RUNNING` + host/port. `POST /generate` avec le même `instanceId` fonctionne directement sans reprovisioning.
 
-2. **Quand l'instance est RUNNING**, générer une image :
-   ```http
-   POST /api/v1/generate
-   { "prompt": "a sunset over mountains", "instanceId": "<id>" }
-   ```
-
-3. **Vérifier** que le job passe PENDING → GENERATING → COMPLETED et que l'image est accessible via `GET /api/v1/images/<jobId>.png`
-
-4. **Si ça marche** → commit + push + déployer sur le RPi via SSH
-
-**Contexte technique découvert le 2026-04-09 :**
+**Contexte technique (2026-04-09/10) :**
 - ComfyUI dans le template Vast.ai écoute sur `127.0.0.1:18188` (localhost only)
 - Caddy proxie sur `*:8188` avec Basic Auth activé par défaut
-- Fix : mapper le port `8188` (Caddy) et passer `WEB_ENABLE_AUTH=false` → Caddy devient transparent
-- Les modèles SDXL sont bien présents (`sd_xl_base_1.0.safetensors` + `sd_xl_turbo_1.0_fp16.safetensors`)
+- `WEB_ENABLE_AUTH=false` ignoré par le template — ne pas utiliser
+- Fix : définir `WEB_USER`/`WEB_PASSWORD` à la création + passer Basic Auth dans toutes les requêtes ComfyUI (`waitForComfyUI`, `generateImage`, `downloadImage`)
+- Credentials dans `src/lib/vast.ts` : `COMFYUI_USER` / `COMFYUI_PASSWORD` (exportés)
+- Les modèles SDXL sont présents (`sd_xl_base_1.0.safetensors` + `sd_xl_turbo_1.0_fp16.safetensors`)
 - Le provisioning script GitHub fonctionne correctement
 
 ## Overview
