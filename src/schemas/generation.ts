@@ -5,15 +5,15 @@ import { z } from 'zod';
 export const generateRequestSchema = z.object({
   prompt: z.string().min(1).max(2000),
   negativePrompt: z.string().max(2000).optional(),
-  width: z.number().int().min(256).max(2048).default(1024),
-  height: z.number().int().min(256).max(2048).default(1024),
-  steps: z.number().int().min(1).max(100).default(20),
-  cfgScale: z.number().min(1).max(20).default(7).describe('Classifier-free guidance scale'),
+  width: z.number().int().min(256).max(2512).default(1024),
+  height: z.number().int().min(256).max(2512).default(1024),
+  steps: z.number().int().min(1).max(100).default(30),
+  cfgScale: z.number().min(1).max(20).default(3.5).describe('Classifier-free guidance scale'),
   sampler: z
     .string()
     .default('euler')
     .describe('Sampler name (e.g. euler, dpm++2m, euler_ancestral)'),
-  scheduler: z.string().default('normal').describe('Scheduler (e.g. normal, karras, exponential)'),
+  scheduler: z.string().default('simple').describe('Scheduler (e.g. normal, karras, exponential)'),
   seed: z
     .number()
     .int()

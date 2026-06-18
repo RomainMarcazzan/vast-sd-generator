@@ -11,8 +11,8 @@ import {
   downloadVideo,
   findCheapOffer,
   generateImage,
-  generateImg2Img,
   generateVideo,
+  generateVideoI2V,
   getInstanceEndpoint,
   pollUntilReady,
   uploadImageToComfy,
@@ -199,145 +199,6 @@ app.openapi(generateRoute, async (c) => {
   return c.json({ jobId: job.id }, 202);
 });
 
-async function processImg2ImgJob(jobId: string, persistentInstanceId?: string) {
-  let vastInstanceId: number | null = null;
-  let isPersistentInstance = false;
-  const jobStart = Date.now();
-
-  try {
-    let host: string;
-    let port: string;
-
-    if (persistentInstanceId) {
-      console.log(`[img2img:${jobId}] Using persistent instance ${persistentInstanceId}...`);
-      const instance = await prisma.vastInstance.findUnique({
-        where: { id: persistentInstanceId },
-      });
-
-      if (!instance || instance.status !== 'RUNNING' || !instance.host || !instance.port) {
-        throw new Error('Persistent instance not available');
-      }
-
-      host = instance.host;
-      port = instance.port;
-      vastInstanceId = Number(instance.vastInstanceId);
-      isPersistentInstance = true;
-
-      await prisma.vastInstance.update({
-        where: { id: persistentInstanceId },
-        data: { lastUsedAt: new Date() },
-      });
-
-      await prisma.generationJob.update({
-        where: { id: jobId },
-        data: {
-          status: 'GENERATING',
-          vastInstanceId: instance.vastInstanceId,
-          instanceId: persistentInstanceId,
-        },
-      });
-    } else {
-      let stepStart = Date.now();
-      console.log(`[img2img:${jobId}] Searching for GPU offer...`);
-      const offer = await findCheapOffer();
-      console.log(
-        `[img2img:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} [${elapsed(stepStart)}]`
-      );
-
-      stepStart = Date.now();
-      const instanceId = await createInstance(offer.id);
-      vastInstanceId = instanceId;
-      console.log(`[img2img:${jobId}] Instance #${instanceId} created [${elapsed(stepStart)}]`);
-
-      await prisma.generationJob.update({
-        where: { id: jobId },
-        data: { status: 'PROVISIONING', vastInstanceId: String(instanceId) },
-      });
-
-      stepStart = Date.now();
-      const instance = await pollUntilReady(instanceId);
-      const endpoint = getInstanceEndpoint(instance);
-      host = endpoint.host;
-      port = endpoint.port;
-      console.log(`[img2img:${jobId}] Instance ready at ${host}:${port} [${elapsed(stepStart)}]`);
-
-      await prisma.generationJob.update({
-        where: { id: jobId },
-        data: { status: 'GENERATING' },
-      });
-    }
-
-    const job = await prisma.generationJob.findUniqueOrThrow({ where: { id: jobId } });
-
-    if (!job.sourceImagePath || job.denoiseStrength === null) {
-      throw new Error('Job is missing sourceImagePath or denoiseStrength');
-    }
-
-    // Upload source image to ComfyUI
-    console.log(`[img2img:${jobId}] Uploading source image to ComfyUI...`);
-    const sourceBuffer = readFileSync(job.sourceImagePath);
-    const comfyFilename = await uploadImageToComfy(host, port, sourceBuffer, `source_${jobId}.png`);
-    console.log(`[img2img:${jobId}] Source image uploaded as ${comfyFilename}`);
-
-    // Generate
-    const stepStart = Date.now();
-    console.log(`[img2img:${jobId}] Sending img2img prompt to ComfyUI...`);
-    const outputFilename = await generateImg2Img(host, port, {
-      prompt: job.prompt,
-      negativePrompt: job.negativePrompt ?? undefined,
-      steps: job.steps,
-      cfgScale: job.cfgScale,
-      sampler: job.sampler,
-      scheduler: job.scheduler,
-      denoiseStrength: job.denoiseStrength,
-      seed: job.seed !== null ? Number(job.seed) : undefined,
-      comfyImageFilename: comfyFilename,
-    });
-    console.log(`[img2img:${jobId}] Image generated: ${outputFilename} [${elapsed(stepStart)}]`);
-
-    // Download
-    const downloadStart = Date.now();
-    console.log(`[img2img:${jobId}] Downloading image...`);
-    const imageBuffer = await downloadImage(host, port, outputFilename);
-    console.log(
-      `[img2img:${jobId}] Downloaded ${(imageBuffer.length / 1024).toFixed(0)}KB [${elapsed(downloadStart)}]`
-    );
-
-    // Save
-    const storagePath = env.IMAGES_STORAGE_PATH;
-    if (!existsSync(storagePath)) mkdirSync(storagePath, { recursive: true });
-
-    const filename = `${jobId}.png`;
-    const filePath = join(storagePath, filename);
-    writeFileSync(filePath, imageBuffer);
-    const fileStats = statSync(filePath);
-
-    await prisma.generatedImage.create({
-      data: {
-        filename,
-        path: filePath,
-        sizeBytes: fileStats.size,
-        width: job.width,
-        height: job.height,
-        jobId,
-      },
-    });
-
-    await prisma.generationJob.update({ where: { id: jobId }, data: { status: 'COMPLETED' } });
-    console.log(`[img2img:${jobId}] ✓ Completed [total: ${elapsed(jobStart)}]`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[img2img:${jobId}] ✗ Failed after ${elapsed(jobStart)}: ${message}`);
-    await prisma.generationJob
-      .update({ where: { id: jobId }, data: { status: 'FAILED', errorMessage: message } })
-      .catch(() => {});
-  } finally {
-    if (vastInstanceId && !isPersistentInstance) {
-      await destroyInstance(vastInstanceId).catch(() => {});
-    }
-  }
-}
-
 async function processVideoJob(jobId: string, persistentInstanceId?: string) {
   let vastInstanceId: number | null = null;
   let isPersistentInstance = false;
@@ -379,8 +240,8 @@ async function processVideoJob(jobId: string, persistentInstanceId?: string) {
       });
     } else {
       let stepStart = Date.now();
-      console.log(`[video:${jobId}] Searching for GPU offer (VIDEO, 16GB VRAM)...`);
-      const offer = await findCheapOffer(16000);
+      console.log(`[video:${jobId}] Searching for GPU offer (VIDEO, 24GB VRAM)...`);
+      const offer = await findCheapOffer(24000, 'fastest');
       console.log(
         `[video:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} [${elapsed(stepStart)}]`
       );
@@ -408,14 +269,13 @@ async function processVideoJob(jobId: string, persistentInstanceId?: string) {
     const job = await prisma.generationJob.findUniqueOrThrow({ where: { id: jobId } });
 
     const stepStart = Date.now();
-    console.log(`[video:${jobId}] Sending prompt to ComfyUI (Wan 2.1)...`);
+    console.log(`[video:${jobId}] Sending prompt to ComfyUI (Wan 2.2 T2V)...`);
     const outputFilename = await generateVideo(host, port, {
       prompt: job.prompt,
       negativePrompt: job.negativePrompt ?? undefined,
       width: job.width,
       height: job.height,
-      frames: 81,
-      fps: 16,
+      frames: job.frames,
       steps: job.steps,
       cfgScale: job.cfgScale,
       seed: job.seed !== null ? Number(job.seed) : undefined,
@@ -465,6 +325,147 @@ async function processVideoJob(jobId: string, persistentInstanceId?: string) {
   }
 }
 
+async function processImg2VidJob(jobId: string, persistentInstanceId?: string) {
+  let vastInstanceId: number | null = null;
+  let isPersistentInstance = false;
+  const jobStart = Date.now();
+
+  try {
+    let host: string;
+    let port: string;
+
+    if (persistentInstanceId) {
+      console.log(`[i2v:${jobId}] Using persistent instance ${persistentInstanceId}...`);
+      const instance = await prisma.vastInstance.findUnique({
+        where: { id: persistentInstanceId },
+      });
+      if (!instance || instance.status !== 'RUNNING' || !instance.host || !instance.port) {
+        throw new Error('Persistent instance not available');
+      }
+      if (instance.type !== 'VIDEO') {
+        throw new Error('Instance type must be VIDEO for I2V');
+      }
+
+      host = instance.host;
+      port = instance.port;
+      vastInstanceId = Number(instance.vastInstanceId);
+      isPersistentInstance = true;
+
+      await prisma.vastInstance.update({
+        where: { id: persistentInstanceId },
+        data: { lastUsedAt: new Date() },
+      });
+      await prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'GENERATING',
+          vastInstanceId: instance.vastInstanceId,
+          instanceId: persistentInstanceId,
+        },
+      });
+    } else {
+      let stepStart = Date.now();
+      console.log(`[i2v:${jobId}] Searching for GPU offer (VIDEO, 24GB VRAM)...`);
+      const offer = await findCheapOffer(24000, 'fastest');
+      console.log(
+        `[i2v:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} [${elapsed(stepStart)}]`
+      );
+
+      stepStart = Date.now();
+      const instanceId = await createInstance(offer.id, 'VIDEO');
+      vastInstanceId = instanceId;
+      console.log(`[i2v:${jobId}] Instance #${instanceId} created [${elapsed(stepStart)}]`);
+
+      await prisma.generationJob.update({
+        where: { id: jobId },
+        data: { status: 'PROVISIONING', vastInstanceId: String(instanceId) },
+      });
+
+      stepStart = Date.now();
+      const instance = await pollUntilReady(instanceId);
+      const endpoint = getInstanceEndpoint(instance);
+      host = endpoint.host;
+      port = endpoint.port;
+      console.log(`[i2v:${jobId}] Instance ready at ${host}:${port} [${elapsed(stepStart)}]`);
+
+      await prisma.generationJob.update({ where: { id: jobId }, data: { status: 'GENERATING' } });
+    }
+
+    const job = await prisma.generationJob.findUniqueOrThrow({ where: { id: jobId } });
+    if (!job.sourceImagePath) {
+      throw new Error('No source image path for I2V job');
+    }
+
+    // Upload source image to ComfyUI
+    const stepStart = Date.now();
+    const imageBuffer = readFileSync(job.sourceImagePath!);
+    const imageFilename = `i2v_source_${jobId}.png`;
+    console.log(`[i2v:${jobId}] Uploading source image to ComfyUI...`);
+    const uploadedFilename = await uploadImageToComfy(host, port, imageBuffer, imageFilename);
+    console.log(
+      `[i2v:${jobId}] Source image uploaded: ${uploadedFilename} [${elapsed(stepStart)}]`
+    );
+
+    // Generate video
+    const genStart = Date.now();
+    console.log(`[i2v:${jobId}] Sending prompt to ComfyUI (Wan 2.2 I2V)...`);
+    const outputFilename = await generateVideoI2V(host, port, {
+      prompt: job.prompt,
+      negativePrompt: job.negativePrompt ?? undefined,
+      width: job.width,
+      height: job.height,
+      frames: job.frames,
+      steps: job.steps,
+      cfgScale: job.cfgScale,
+      seed: job.seed !== null ? Number(job.seed) : undefined,
+      imageFilename: uploadedFilename,
+    });
+    console.log(`[i2v:${jobId}] Video generated: ${outputFilename} [${elapsed(genStart)}]`);
+
+    // Download
+    const downloadStart = Date.now();
+    console.log(`[i2v:${jobId}] Downloading video...`);
+    const videoBuffer = await downloadVideo(host, port, outputFilename);
+    console.log(
+      `[i2v:${jobId}] Downloaded ${(videoBuffer.length / 1024 / 1024).toFixed(1)}MB [${elapsed(downloadStart)}]`
+    );
+
+    const storagePath = env.IMAGES_STORAGE_PATH;
+    if (!existsSync(storagePath)) mkdirSync(storagePath, { recursive: true });
+
+    const filename = `${jobId}.mp4`;
+    const filePath = join(storagePath, filename);
+    writeFileSync(filePath, videoBuffer);
+    const fileStats = statSync(filePath);
+
+    await prisma.generatedVideo.create({
+      data: {
+        filename,
+        path: filePath,
+        sizeBytes: fileStats.size,
+        width: job.width,
+        height: job.height,
+        fps: 16,
+        frames: job.frames,
+        jobId,
+      },
+    });
+
+    await prisma.generationJob.update({ where: { id: jobId }, data: { status: 'COMPLETED' } });
+    console.log(`[i2v:${jobId}] ✓ Completed [total: ${elapsed(jobStart)}]`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[i2v:${jobId}] ✗ Failed after ${elapsed(jobStart)}: ${message}`);
+    await prisma.generationJob
+      .update({ where: { id: jobId }, data: { status: 'FAILED', errorMessage: message } })
+      .catch(() => {});
+  } finally {
+    if (vastInstanceId && !isPersistentInstance) {
+      await destroyInstance(vastInstanceId).catch(() => {});
+    }
+  }
+}
+
 app.post('/video', async (c) => {
   let body: {
     prompt?: unknown;
@@ -476,6 +477,7 @@ app.post('/video', async (c) => {
     sampler?: unknown;
     scheduler?: unknown;
     seed?: unknown;
+    frames?: unknown;
     instanceId?: unknown;
   };
   try {
@@ -497,6 +499,8 @@ app.post('/video', async (c) => {
     }
   }
 
+  const frames = Number(body.frames ?? 81);
+
   const job = await prisma.generationJob.create({
     data: {
       prompt: prompt.trim(),
@@ -508,6 +512,7 @@ app.post('/video', async (c) => {
       sampler: typeof body.sampler === 'string' ? body.sampler : 'euler',
       scheduler: typeof body.scheduler === 'string' ? body.scheduler : 'simple',
       seed: body.seed != null ? Number(body.seed) : null,
+      frames,
       mediaType: 'VIDEO',
     },
   });
@@ -517,72 +522,71 @@ app.post('/video', async (c) => {
   return c.json({ jobId: job.id }, 202);
 });
 
-app.post('/img2img', async (c) => {
-  let formData: FormData;
-  try {
-    formData = await c.req.formData();
-  } catch {
-    return c.json({ error: 'Request must be multipart/form-data' }, 422);
-  }
+app.post('/video/img2vid', async (c) => {
+  const formData = await c.req.parseBody();
+  const imageFile = formData['image'] as File | undefined;
+  const sourceJobId = formData['sourceJobId'] as string | undefined;
+  const prompt = formData['prompt'] as string | undefined;
+  const negativePrompt = formData['negativePrompt'] as string | undefined;
+  const instanceId = formData['instanceId'] as string | undefined;
 
-  const prompt = formData.get('prompt');
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+  if (!prompt || prompt.trim().length === 0) {
     return c.json({ error: 'prompt is required' }, 422);
   }
 
-  // Source image: uploaded file or existing job
-  const storagePath = env.IMAGES_STORAGE_PATH;
+  if (instanceId && typeof instanceId === 'string') {
+    const instance = await prisma.vastInstance.findUnique({ where: { id: instanceId } });
+    if (instance && instance.type !== 'VIDEO') {
+      return c.json({ error: 'instanceId must reference a VIDEO instance' }, 422);
+    }
+  }
+
+  // Resolve source image
   let sourceImagePath: string;
-
-  const imageFile = formData.get('image');
-  const sourceJobId = formData.get('sourceJobId');
-
-  if (imageFile && imageFile instanceof File) {
-    // Save uploaded file to disk
+  if (imageFile) {
+    const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const storagePath = env.IMAGES_STORAGE_PATH;
     if (!existsSync(storagePath)) mkdirSync(storagePath, { recursive: true });
-    const uploadId = crypto.randomUUID();
-    sourceImagePath = join(storagePath, `upload_${uploadId}.png`);
-    writeFileSync(sourceImagePath, Buffer.from(await imageFile.arrayBuffer()));
-  } else if (sourceJobId && typeof sourceJobId === 'string') {
-    const sourceJob = await prisma.generationJob.findUnique({
+    sourceImagePath = join(storagePath, `i2v_source_${Date.now()}_${imageFile.name}`);
+    writeFileSync(sourceImagePath, buffer);
+  } else if (sourceJobId) {
+    const srcJob = await prisma.generationJob.findUnique({
       where: { id: sourceJobId },
       include: { image: true },
     });
-    if (!sourceJob?.image) {
-      return c.json({ error: 'Source job not found or has no image' }, 404);
+    if (!srcJob?.image?.path) {
+      return c.json({ error: 'sourceJobId not found or has no image' }, 404);
     }
-    sourceImagePath = sourceJob.image.path;
+    sourceImagePath = srcJob.image.path;
   } else {
-    return c.json({ error: 'Provide either image (file) or sourceJobId' }, 422);
+    return c.json({ error: 'image file or sourceJobId is required' }, 422);
   }
 
-  const denoiseStrength = Number(formData.get('denoiseStrength') ?? 0.75);
-  const steps = Number(formData.get('steps') ?? 20);
-  const cfgScale = Number(formData.get('cfgScale') ?? 7);
-  const sampler = String(formData.get('sampler') ?? 'euler');
-  const scheduler = String(formData.get('scheduler') ?? 'normal');
-  const seedRaw = formData.get('seed');
-  const seed = seedRaw ? Number(seedRaw) : null;
-  const negativePrompt = formData.get('negativePrompt');
-  const instanceId = formData.get('instanceId');
+  const width = Number((formData['width'] as string) ?? 832);
+  const height = Number((formData['height'] as string) ?? 480);
+  const steps = Number((formData['steps'] as string) ?? 20);
+  const cfgScale = Number((formData['cfgScale'] as string) ?? 6);
+  const frames = Number((formData['frames'] as string) ?? 81);
+  const seed = formData['seed'] ? Number(formData['seed']) : null;
 
   const job = await prisma.generationJob.create({
     data: {
       prompt: prompt.trim(),
-      negativePrompt: negativePrompt && typeof negativePrompt === 'string' ? negativePrompt : null,
-      width: Number(formData.get('width') ?? 1024),
-      height: Number(formData.get('height') ?? 1024),
+      negativePrompt: negativePrompt?.trim() || null,
+      width,
+      height,
       steps,
       cfgScale,
-      sampler,
-      scheduler,
+      sampler: (formData['sampler'] as string) ?? 'euler',
+      scheduler: (formData['scheduler'] as string) ?? 'simple',
       seed,
-      denoiseStrength,
+      frames,
       sourceImagePath,
+      mediaType: 'VIDEO',
     },
   });
 
-  processImg2ImgJob(job.id, instanceId && typeof instanceId === 'string' ? instanceId : undefined);
+  processImg2VidJob(job.id, typeof instanceId === 'string' ? instanceId : undefined);
 
   return c.json({ jobId: job.id }, 202);
 });

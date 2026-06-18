@@ -24,6 +24,7 @@ model GenerationJob {
   sampler        String         @default("euler")
   scheduler      String         @default("normal")
   seed           BigInt?
+  frames         Int            @default(81)  // video frames (VIDEO jobs)
   denoiseStrength Float?        // null = txt2img, set for img2img
   sourceImagePath String?       // source image path for img2img
   mediaType      MediaType      @default(IMAGE)
@@ -94,8 +95,8 @@ model VastInstance {
 }
 
 enum InstanceType {
-  IMAGE  // SDXL — 12GB VRAM min
-  VIDEO  // Wan 2.1 — 16GB VRAM min
+  IMAGE  // Qwen Image Max 2512 — 24GB VRAM min
+  VIDEO  // Wan 2.2 T2V+I2V — 24GB VRAM min
 }
 
 enum InstanceStatus {

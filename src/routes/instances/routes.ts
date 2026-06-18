@@ -121,10 +121,10 @@ app.openapi(listInstancesRoute, async (c) => {
 app.openapi(createInstanceRoute, async (c) => {
   const body = c.req.valid('json');
   const instanceType = body.type ?? 'IMAGE';
-  const minVram = instanceType === 'VIDEO' ? 16000 : 12000;
+  const minVram = 24000;
 
   console.log(`[instance] Searching for GPU offer (type=${instanceType}, minVram=${minVram}MB)...`);
-  const offer = await findCheapOffer(minVram);
+  const offer = await findCheapOffer(minVram, 'fastest');
   console.log(`[instance] Found offer #${offer.id}: ${offer.gpu_name}`);
 
   console.log('[instance] Creating Vast.ai instance...');

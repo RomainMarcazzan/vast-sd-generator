@@ -9,20 +9,24 @@
 # Flow typique images (mode persistant - économique pour itérations) :
 #   1. POST /instances              → retourne { id, status: "PROVISIONING" } immédiatement
 #   2. GET /instances               → poll jusqu'à status RUNNING (~3 min)
-#   3. POST /generate               → avec instanceId, génère image #1 (~13s)
-#   4. POST /generate/img2img       → avec instanceId + image, affine image #1
+#   3. POST /generate               → avec instanceId, génère image #1
 #   ... (itérez autant que vous voulez)
 #   5. DELETE /instances/:id        → détruit l'instance (arrête la facturation)
 #
-# Flow typique vidéo (Wan 2.1 14B) :
-#   1. POST /instances { type: "VIDEO" } → instance 16GB VRAM (~3-5 min boot + ~26GB models)
+# Flow typique vidéo (Wan 2.2 14B MoE) :
+#   1. POST /instances { type: "VIDEO" } → instance 24GB VRAM (~3-5 min boot + ~68GB models)
 #   2. GET /instances               → poll jusqu'à status RUNNING
-#   3. POST /generate/video         → avec instanceId, génère vidéo (~3-10 min)
+#   3. POST /generate/video         → avec instanceId, génère vidéo T2V (~3-10 min)
 #   4. GET /jobs/:id                → poll jusqu'à COMPLETED, récupère videoUrl
 #   5. GET /videos/:filename        → télécharge la vidéo mp4
 #   6. DELETE /instances/:id        → détruit l'instance
 #
-# ⚠️  POST /instances / POST /generate louent un GPU sur Vast.ai (~$0.10-0.50/h)
+# Flow typique img2vid (Wan 2.2 I2V MoE) :
+#   1. POST /instances { type: "VIDEO" } → instance 24GB VRAM
+#   2. POST /generate/video/img2vid → multipart avec image source
+#   3. GET /jobs/:id                → poll jusqu'à COMPLETED
+#
+# ⚠️  POST /instances / POST /generate louent un GPU sur Vast.ai ($0.15-0.90/h)
 #     En mode persistant, l'instance reste active 30 min après la création puis auto-destruction
 #     Vérifiez votre dashboard Vast.ai : https://cloud.vast.ai/instances/
 
@@ -48,9 +52,9 @@ GET {{baseUrl}}/api/v1/instances
 
 ###
 
-### Créer une instance IMAGE (SDXL, 12GB VRAM)
+### Créer une instance IMAGE (Qwen Image Max 2512, 24GB VRAM)
 # Retourne { id, vastInstanceId, host, port, expiresAt, type }
-# L'instance s'auto-détruit après 30 min d'inactivité
+# L'instance s'auto-détruit après 30 min
 POST {{baseUrl}}/api/v1/instances
 Content-Type: application/json
 
@@ -61,8 +65,8 @@ Content-Type: application/json
 
 ###
 
-### Créer une instance VIDEO (Wan 2.1, 16GB VRAM)
-# Boot + téléchargement modèles ~26GB — prévoir 15-30 min avant RUNNING
+### Créer une instance VIDEO (Wan 2.2 T2V+I2V, 24GB VRAM)
+# Boot + téléchargement modèles ~68GB — prévoir 15-30 min avant RUNNING
 POST {{baseUrl}}/api/v1/instances
 Content-Type: application/json
 
@@ -74,18 +78,15 @@ Content-Type: application/json
 ###
 
 ### Détruire une instance (arrête la facturation immédiatement)
-# Remplacez :id par l'ID retourné lors de la création
 DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
 
 ###
 
 ### ============================================================================
-### GENERATION — Soumettre un job de génération d'image
+### GENERATION — Soumettre un job de génération d'image (Qwen Image Max 2512)
 ### ============================================================================
 
 ### Générer une image (mode auto - instance temporaire)
-# Retourne { jobId } immédiatement — la génération tourne en background
-# L'instance est créée puis détruite automatiquement
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
@@ -96,16 +97,15 @@ Content-Type: application/json
 ###
 
 ### Générer une image (mode persistant - réutilise une instance)
-# Utilisez instanceId pour réutiliser une instance existante
-# Économique quand vous itérez sur plusieurs images
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
 
 {
   "prompt": "a cat wearing a top hat, oil painting style",
-  "width": 512,
-  "height": 512,
-  "steps": 15,
+  "width": 1024,
+  "height": 1024,
+  "steps": 30,
+  "cfgScale": 3.5,
   "instanceId": "{{instanceId}}"
 }
 
@@ -121,9 +121,9 @@ Content-Type: application/json
   "width": 1024,
   "height": 1024,
   "steps": 30,
-  "cfgScale": 7,
+  "cfgScale": 3.5,
   "sampler": "euler",
-  "scheduler": "normal",
+  "scheduler": "simple",
   "seed": 42,
   "instanceId": "{{instanceId}}"
 }
@@ -131,12 +131,10 @@ Content-Type: application/json
 ###
 
 ### ============================================================================
-### VIDEO — Générer une vidéo avec Wan 2.1 14B (txt2vid)
+### VIDEO T2V — Wan 2.2 14B T2V MoE (txt2vid)
 ### ============================================================================
 
-### Générer une vidéo (nécessite une instance VIDEO RUNNING)
-# Retourne { jobId } immédiatement — génération en background (~3-10 min)
-# Résultat : mp4, 832x480, 81 frames, 16fps
+### Générer une vidéo depuis un texte (nécessite une instance VIDEO RUNNING)
 POST {{baseUrl}}/api/v1/generate/video
 Content-Type: application/json
 
@@ -147,7 +145,7 @@ Content-Type: application/json
 
 ###
 
-### Générer une vidéo avec tous les paramètres
+### Générer une vidéo avec paramètres avancés
 POST {{baseUrl}}/api/v1/generate/video
 Content-Type: application/json
 
@@ -158,46 +156,24 @@ Content-Type: application/json
   "height": 480,
   "steps": 20,
   "cfgScale": 6,
-  "scheduler": "simple",
+  "frames": 81,
   "instanceId": "{{instanceId}}"
 }
 
 ###
 
-### Lister toutes les vidéos générées
-GET {{baseUrl}}/api/v1/videos
-
-###
-
-### Récupérer une vidéo (retourne le fichier mp4)
-# Le filename est de la forme {jobId}.mp4
-GET {{baseUrl}}/api/v1/videos/{{jobId}}.mp4
-
-###
-
-### Supprimer une vidéo (par son ID)
-# DELETE {{baseUrl}}/api/v1/videos/REPLACE_WITH_VIDEO_ID
-
-###
-
 ### ============================================================================
-### IMG2IMG — Affiner une image existante
+### VIDEO I2V — Wan 2.2 14B I2V MoE (image vers vidéo)
 ### ============================================================================
 
-### img2img depuis une image uploadée
-# denoiseStrength: 0.0 = identique, 1.0 = ignore l'image (= txt2img)
-# 0.5-0.75 recommandé pour garder la composition
-POST {{baseUrl}}/api/v1/generate/img2img
+### Générer une vidéo depuis une image uploadée
+POST {{baseUrl}}/api/v1/generate/video/img2vid
 Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
 Content-Disposition: form-data; name="prompt"
 
-same scene but in winter, snow covered mountains
---boundary
-Content-Disposition: form-data; name="denoiseStrength"
-
-0.6
+a sunset over the ocean, gentle waves, warm colors
 --boundary
 Content-Disposition: form-data; name="instanceId"
 
@@ -211,27 +187,42 @@ Content-Type: image/png
 
 ###
 
-### img2img depuis un job existant (pas besoin d'uploader)
-POST {{baseUrl}}/api/v1/generate/img2img
+### Générer une vidéo depuis un job d'image existant
+POST {{baseUrl}}/api/v1/generate/video/img2vid
 Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
 Content-Disposition: form-data; name="prompt"
 
-same scene but at night, dark atmosphere
+same scene but at night, moon reflecting on water
 --boundary
 Content-Disposition: form-data; name="sourceJobId"
 
 {{jobId}}
 --boundary
-Content-Disposition: form-data; name="denoiseStrength"
+Content-Disposition: form-data; name="frames"
 
-0.5
---boundary
-Content-Disposition: form-data; name="instanceId"
-
-{{instanceId}}
+81
 --boundary--
+
+###
+
+### ============================================================================
+### VIDEOS — Lister, récupérer et supprimer des vidéos
+### ============================================================================
+
+### Lister toutes les vidéos générées
+GET {{baseUrl}}/api/v1/videos
+
+###
+
+### Récupérer une vidéo (retourne le fichier mp4)
+GET {{baseUrl}}/api/v1/videos/{{jobId}}.mp4
+
+###
+
+### Supprimer une vidéo (par son ID)
+# DELETE {{baseUrl}}/api/v1/videos/REPLACE_WITH_VIDEO_ID
 
 ###
 
@@ -240,8 +231,8 @@ Content-Disposition: form-data; name="instanceId"
 ### ============================================================================
 
 ### Récupérer le status d'un job
-# Status possibles : PENDING → PROVISIONING → GENERATING → COMPLETED / FAILED
-# Quand COMPLETED, le champ imageUrl contient l'URL de l'image
+# Status : PENDING → PROVISIONING → GENERATING → COMPLETED / FAILED
+# Quand COMPLETED, imageUrl ou videoUrl contient l'URL
 GET {{baseUrl}}/api/v1/jobs/{{jobId}}
 
 ###
@@ -250,19 +241,17 @@ GET {{baseUrl}}/api/v1/jobs/{{jobId}}
 ### IMAGES — Lister, récupérer et supprimer des images
 ### ============================================================================
 
-### Lister toutes les images générées (les plus récentes en premier)
+### Lister toutes les images générées
 GET {{baseUrl}}/api/v1/images
 
 ###
 
-### Récupérer une image par son filename (retourne le fichier PNG)
-# Le filename est de la forme {jobId}.png
+### Récupérer une image par son filename
 GET {{baseUrl}}/api/v1/images/{{jobId}}.png
 
 ###
 
 ### Supprimer une image (par son ID, pas son filename)
-# Supprime le fichier sur disque ET l'enregistrement en DB
 # DELETE {{baseUrl}}/api/v1/images/REPLACE_WITH_IMAGE_ID
 
 ###
@@ -309,7 +298,7 @@ GET {{baseUrl}}/api/v1/unknown
 ###
 
 ### ============================================================================
-### EXEMPLE COMPLET — Session de génération avec instance persistante
+### EXEMPLE COMPLET — Session image avec instance persistante
 ### ============================================================================
 
 ### 1. Créer une instance persistante
@@ -321,7 +310,7 @@ Content-Type: application/json
 
 ###
 
-### 2. Générer image #1 avec l'instance (mettez l'id retourné dans @instanceId en haut du fichier)
+### 2. Générer image #1 (copiez l'id retourné dans @instanceId en haut)
 # @name generate1
 POST {{baseUrl}}/api/v1/generate
 Content-Type: application/json
@@ -344,21 +333,21 @@ Content-Type: application/json
 
 ###
 
-### 4. Vérifier le status des jobs (mettez le jobId retourné dans @jobId en haut du fichier)
+### 4. Vérifier le status des jobs
 GET {{baseUrl}}/api/v1/jobs/{{jobId}}
 
 ###
 
-### 5. Détruire l'instance quand vous avez fini
+### 5. Détruire l'instance
 DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
 
 ###
 
 ### ============================================================================
-### EXEMPLE COMPLET — Session de génération vidéo avec instance persistante
+### EXEMPLE COMPLET — Session vidéo avec instance persistante
 ### ============================================================================
 
-### 1. Créer une instance VIDEO (16GB VRAM — ~15-30 min boot + download modèles)
+### 1. Créer une instance VIDEO (24GB VRAM — ~15-30 min boot + download modèles)
 POST {{baseUrl}}/api/v1/instances
 Content-Type: application/json
 
@@ -369,12 +358,12 @@ Content-Type: application/json
 
 ###
 
-### 2. Surveiller jusqu'à RUNNING (mettez l'id retourné dans @instanceId)
+### 2. Surveiller jusqu'à RUNNING
 GET {{baseUrl}}/api/v1/instances
 
 ###
 
-### 3. Générer une vidéo
+### 3. Générer une vidéo T2V
 POST {{baseUrl}}/api/v1/generate/video
 Content-Type: application/json
 
@@ -385,8 +374,7 @@ Content-Type: application/json
 
 ###
 
-### 4. Vérifier le status (mettez le jobId retourné dans @jobId)
-# Quand COMPLETED, videoUrl contient l'URL de la vidéo
+### 4. Vérifier le status (copiez le jobId dans @jobId)
 GET {{baseUrl}}/api/v1/jobs/{{jobId}}
 
 ###
@@ -398,5 +386,3 @@ GET {{baseUrl}}/api/v1/videos/{{jobId}}.mp4
 
 ### 6. Détruire l'instance
 DELETE {{baseUrl}}/api/v1/instances/{{instanceId}}
-
-###

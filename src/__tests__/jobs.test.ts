@@ -10,16 +10,25 @@ describe('GET /api/v1/jobs/:id', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({
+    // Note: createJob uses Prisma defaults (steps=20, cfgScale=7, scheduler='normal')
+    expect(body).toMatchObject({
       id: job.id,
       prompt: 'a sunset',
       negativePrompt: null,
       width: 1024,
       height: 1024,
       steps: 20,
+      cfgScale: 7,
+      sampler: 'euler',
+      scheduler: 'normal',
+      seed: null,
+      denoiseStrength: null,
+      sourceImagePath: null,
+      mediaType: 'IMAGE',
       status: 'PENDING',
       errorMessage: null,
       imageUrl: null,
+      videoUrl: null,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     });

@@ -23,7 +23,7 @@ describe('POST /api/v1/generate', () => {
     expect(job?.status).toBe('PENDING');
     expect(job?.width).toBe(1024);
     expect(job?.height).toBe(1024);
-    expect(job?.steps).toBe(20);
+    expect(job?.steps).toBe(30);
   });
 
   it('should accept all optional parameters', async () => {

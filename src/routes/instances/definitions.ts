@@ -4,7 +4,7 @@ export const createInstanceSchema = z.object({
   type: z
     .enum(['IMAGE', 'VIDEO'])
     .default('IMAGE')
-    .describe('IMAGE (SDXL, 12GB VRAM) or VIDEO (Wan 2.1, 16GB VRAM)'),
+    .describe('IMAGE (Qwen Image Max 2512, 24GB VRAM) or VIDEO (Wan 2.2 T2V+I2V, 24GB VRAM)'),
   label: z.string().optional().describe('Optional label for the instance'),
 });
 
