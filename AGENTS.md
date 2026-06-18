@@ -133,7 +133,7 @@ model VastInstance {
 
 ### Vast.ai Client (`src/lib/vast.ts`)
 
-- `findGpuOffer(minVram, mode, maxDph)` — GPU avec `reliability >= 0.95`, `inet_down >= 500`, `dph_total >= $0.15` et `<= $maxDph` ; mode `'cheapest'` ou `'fastest'`
+- `findGpuOffer(minVram, mode, maxDph, minDiskGb)` — GPU avec `reliability >= 0.95`, `inet_down >= 500`, `disk_space >= minDiskGb*1024 MB`, `dph_total >= $0.15` et `<= $maxDph` ; mode `'cheapest'` ou `'fastest'`
 - `createInstance(offerId, type)` — template ComfyUI (`cc68218cbd560823cb841b721786077c`), provisioning script IMAGE ou VIDEO, Basic Auth credentials
 - `generateImage(host, port, params)` — workflow Qwen Image Max 2512 (UNETLoader → ModelSamplingAuraFlow → KSampler), poll `/history`
 - `generateVideo(host, port, params)` — workflow Wan 2.2 T2V 14B (MoE: 2 UNETLoader + 2 KSamplerAdvanced + CreateVideo + SaveVideo), timeout 30 min

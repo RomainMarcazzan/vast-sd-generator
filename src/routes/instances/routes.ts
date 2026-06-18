@@ -124,11 +124,12 @@ app.openapi(createInstanceRoute, async (c) => {
   const minVram = 24000;
   const maxDph = body.maxDph ?? (instanceType === 'VIDEO' ? 2 : 1.5);
   const gpuMode = body.gpuMode ?? 'fastest';
+  const minDiskGb = instanceType === 'VIDEO' ? 100 : 50;
 
   console.log(
-    `[instance] Searching for GPU offer (type=${instanceType}, minVram=${minVram}MB, maxDph=${maxDph}, mode=${gpuMode})...`
+    `[instance] Searching for GPU offer (type=${instanceType}, minVram=${minVram}MB, maxDph=${maxDph}, mode=${gpuMode}, minDisk=${minDiskGb}GB)...`
   );
-  const offer = await findGpuOffer(minVram, gpuMode, maxDph);
+  const offer = await findGpuOffer(minVram, gpuMode, maxDph, minDiskGb);
   console.log(`[instance] Found offer #${offer.id}: ${offer.gpu_name}`);
 
   console.log('[instance] Creating Vast.ai instance...');
