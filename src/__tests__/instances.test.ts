@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 
 // Mock Vast.ai pour éviter de vraiment créer des instances
 vi.mock('../lib/vast.js', () => ({
-  findCheapOffer: vi.fn().mockResolvedValue({
+  findGpuOffer: vi.fn().mockResolvedValue({
     id: 12345,
     gpu_name: 'RTX 4090',
     num_gpus: 1,

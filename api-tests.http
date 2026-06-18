@@ -30,7 +30,7 @@
 #     En mode persistant, l'instance reste active 30 min après la création puis auto-destruction
 #     Vérifiez votre dashboard Vast.ai : https://cloud.vast.ai/instances/
 
-@baseUrl = http://localhost:3000
+@baseUrl = http://localhost:4000
 @jobId = REPLACE_WITH_JOB_ID
 @instanceId = REPLACE_WITH_INSTANCE_ID
 
@@ -55,6 +55,7 @@ GET {{baseUrl}}/api/v1/instances
 ### Créer une instance IMAGE (Qwen Image Max 2512, 24GB VRAM)
 # Retourne { id, vastInstanceId, host, port, expiresAt, type }
 # L'instance s'auto-détruit après 30 min
+# Paramètres par défaut : fastest GPU sous 1.50 $/h
 POST {{baseUrl}}/api/v1/instances
 Content-Type: application/json
 
@@ -65,8 +66,37 @@ Content-Type: application/json
 
 ###
 
+### Créer une instance IMAGE — qualité maximale pour comparer avec Replicate
+# GPU le plus rapide sous 1 $/h → RTX 5090 typiquement
+POST {{baseUrl}}/api/v1/instances
+Content-Type: application/json
+
+{
+  "type": "IMAGE",
+  "label": "Comparaison Replicate",
+  "gpuMode": "fastest",
+  "maxDph": 1
+}
+
+###
+
+### Créer une instance IMAGE — priorité au prix (GPU le moins cher sous 0.50 $/h)
+# Utile pour des batchs où la vitesse importe peu
+POST {{baseUrl}}/api/v1/instances
+Content-Type: application/json
+
+{
+  "type": "IMAGE",
+  "label": "Budget session",
+  "gpuMode": "cheapest",
+  "maxDph": 0.50
+}
+
+###
+
 ### Créer une instance VIDEO (Wan 2.2 T2V+I2V, 24GB VRAM)
 # Boot + téléchargement modèles ~68GB — prévoir 15-30 min avant RUNNING
+# Paramètres par défaut : fastest GPU sous 2 $/h
 POST {{baseUrl}}/api/v1/instances
 Content-Type: application/json
 
@@ -125,6 +155,31 @@ Content-Type: application/json
   "sampler": "euler",
   "scheduler": "simple",
   "seed": 42,
+  "instanceId": "{{instanceId}}"
+}
+
+###
+
+### ============================================================================
+### COMPARAISON REPLICATE — Scène documentaire nocturne (photo 1.1)
+# Prompt complet issu du projet Replicate, pour comparer le rendu
+# Qwen Image Max 2512 vs Replicate. Résolution 16:9 comme l'original.
+# Paramètres conservés : euler + simple (flow-matching AuraFlow)
+# ============================================================================
+
+### Générer — Documentaire nuit (comparaison Replicate)
+POST {{baseUrl}}/api/v1/generate
+Content-Type: application/json
+
+{
+  "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views.. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25–35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere.. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins.. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nNighttime rural chalet backyard in southwestern France, disturbed soil patch near a charred fire pit, flashlight beam raking over dirt, damp grass\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout.",
+  "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, shallow depth of field, bokeh, blurry, low resolution, distorted faces, smooth plastic look, hdr, unrealistic shadows",
+  "width": 1344,
+  "height": 768,
+  "steps": 30,
+  "cfgScale": 3.5,
+  "sampler": "euler",
+  "scheduler": "simple",
   "instanceId": "{{instanceId}}"
 }
 

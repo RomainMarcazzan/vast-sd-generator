@@ -70,9 +70,10 @@ async function vastFetch(path: string, options: RequestInit = {}): Promise<Respo
 
 // --- Public API ---
 
-export async function findCheapOffer(
+export async function findGpuOffer(
   minVramMb = 12000,
-  mode: 'cheapest' | 'fastest' = 'cheapest'
+  mode: 'cheapest' | 'fastest' = 'cheapest',
+  maxDph = 2
 ): Promise<VastOffer> {
   const order = mode === 'fastest' ? [['dlperf', 'desc']] : [['dph_total', 'asc']];
 
@@ -83,7 +84,7 @@ export async function findCheapOffer(
       reliability: { gte: 0.95 },
       inet_down: { gte: 500 },
       disk_bw: { gte: 200 },
-      dph_total: { gte: 0.15 },
+      dph_total: { gte: 0.15, lte: maxDph },
       rentable: { eq: true },
       type: 'ondemand',
       limit: 5,

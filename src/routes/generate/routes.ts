@@ -9,7 +9,7 @@ import {
   destroyInstance,
   downloadImage,
   downloadVideo,
-  findCheapOffer,
+  findGpuOffer,
   generateImage,
   generateVideo,
   generateVideoI2V,
@@ -69,7 +69,7 @@ async function processJob(jobId: string, persistentInstanceId?: string) {
       // Mode auto : créer une instance temporaire
       let stepStart = Date.now();
       console.log(`[job:${jobId}] Searching for GPU offer...`);
-      const offer = await findCheapOffer();
+      const offer = await findGpuOffer(12000, 'cheapest', 1.5);
       console.log(
         `[job:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} (${offer.gpu_ram}MB) — $${offer.dph_total}/h [${elapsed(stepStart)}]`
       );
@@ -241,7 +241,7 @@ async function processVideoJob(jobId: string, persistentInstanceId?: string) {
     } else {
       let stepStart = Date.now();
       console.log(`[video:${jobId}] Searching for GPU offer (VIDEO, 24GB VRAM)...`);
-      const offer = await findCheapOffer(24000, 'fastest');
+      const offer = await findGpuOffer(24000, 'fastest', 2);
       console.log(
         `[video:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} [${elapsed(stepStart)}]`
       );
@@ -366,7 +366,7 @@ async function processImg2VidJob(jobId: string, persistentInstanceId?: string) {
     } else {
       let stepStart = Date.now();
       console.log(`[i2v:${jobId}] Searching for GPU offer (VIDEO, 24GB VRAM)...`);
-      const offer = await findCheapOffer(24000, 'fastest');
+      const offer = await findGpuOffer(24000, 'fastest', 2);
       console.log(
         `[i2v:${jobId}] Found offer #${offer.id}: ${offer.gpu_name} [${elapsed(stepStart)}]`
       );

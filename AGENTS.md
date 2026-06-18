@@ -133,7 +133,7 @@ model VastInstance {
 
 ### Vast.ai Client (`src/lib/vast.ts`)
 
-- `findCheapOffer(minVram, mode)` — GPU avec `reliability >= 0.95`, `inet_down >= 500`, `dph_total >= $0.15` ; mode `'cheapest'` ou `'fastest'`
+- `findGpuOffer(minVram, mode, maxDph)` — GPU avec `reliability >= 0.95`, `inet_down >= 500`, `dph_total >= $0.15` et `<= $maxDph` ; mode `'cheapest'` ou `'fastest'`
 - `createInstance(offerId, type)` — template ComfyUI (`cc68218cbd560823cb841b721786077c`), provisioning script IMAGE ou VIDEO, Basic Auth credentials
 - `generateImage(host, port, params)` — workflow Qwen Image Max 2512 (UNETLoader → ModelSamplingAuraFlow → KSampler), poll `/history`
 - `generateVideo(host, port, params)` — workflow Wan 2.2 T2V 14B (MoE: 2 UNETLoader + 2 KSamplerAdvanced + CreateVideo + SaveVideo), timeout 30 min
@@ -148,8 +148,8 @@ Provisioning scripts :
 - `VIDEO` → `scripts/provision-video.sh` (Wan 2.2: 4 MoE diffusion models ~56GB total + UMT5-XXL ~10GB + VAE ~1GB)
 
 Instance types :
-- `IMAGE` → 24GB VRAM min (`findCheapOffer(24000, 'fastest')`), GPU assez puissant pour Qwen 2512
-- `VIDEO` → 24GB VRAM min (`findCheapOffer(24000, 'fastest')`), GPU assez puissant pour Wan 2.2 14B MoE
+- `IMAGE` → 24GB VRAM min (`findGpuOffer(24000, 'fastest', 1.5)`), GPU assez puissant pour Qwen 2512
+- `VIDEO` → 24GB VRAM min (`findGpuOffer(24000, 'fastest', 2)`), GPU assez puissant pour Wan 2.2 14B MoE
 
 ComfyUI REST API (via Caddy port 8188) :
 - `POST /upload/image` → upload source image pour I2V

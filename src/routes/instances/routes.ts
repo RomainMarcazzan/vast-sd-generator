@@ -6,7 +6,7 @@ import {
   COMFYUI_USER,
   createInstance,
   destroyInstance,
-  findCheapOffer,
+  findGpuOffer,
   getInstance,
   getInstanceEndpoint,
 } from '../../lib/vast.js';
@@ -122,9 +122,13 @@ app.openapi(createInstanceRoute, async (c) => {
   const body = c.req.valid('json');
   const instanceType = body.type ?? 'IMAGE';
   const minVram = 24000;
+  const maxDph = body.maxDph ?? (instanceType === 'VIDEO' ? 2 : 1.5);
+  const gpuMode = body.gpuMode ?? 'fastest';
 
-  console.log(`[instance] Searching for GPU offer (type=${instanceType}, minVram=${minVram}MB)...`);
-  const offer = await findCheapOffer(minVram, 'fastest');
+  console.log(
+    `[instance] Searching for GPU offer (type=${instanceType}, minVram=${minVram}MB, maxDph=${maxDph}, mode=${gpuMode})...`
+  );
+  const offer = await findGpuOffer(minVram, gpuMode, maxDph);
   console.log(`[instance] Found offer #${offer.id}: ${offer.gpu_name}`);
 
   console.log('[instance] Creating Vast.ai instance...');
