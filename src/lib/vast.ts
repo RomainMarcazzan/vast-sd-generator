@@ -85,7 +85,7 @@ export async function findGpuOffer(
       reliability: { gte: 0.95 },
       inet_down: { gte: 500 },
       disk_bw: { gte: 200 },
-      disk_space: { gte: minDiskGb * 1024 },
+      disk_space: { gte: minDiskGb },
       dph_total: { gte: 0.15, lte: maxDph },
       rentable: { eq: true },
       type: 'ondemand',

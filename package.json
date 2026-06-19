@@ -15,7 +15,8 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "format": "biome format --write .",
-    "lint": "biome lint ."
+    "lint": "biome lint .",
+    "cleanup:instances": "tsx scripts/cleanup-instances.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
