@@ -105,12 +105,14 @@ export async function findGpuOffer(
 
 export async function createInstance(
   offerId: number,
-  type: 'IMAGE' | 'VIDEO' = 'IMAGE'
+  type: 'IMAGE' | 'VIDEO' = 'IMAGE',
+  diskGb = 50
 ): Promise<number> {
   const res = await vastFetch(`/api/v0/asks/${offerId}/`, {
     method: 'PUT',
     body: JSON.stringify({
       template_hash_id: COMFYUI_TEMPLATE_HASH,
+      disk: diskGb,
       env: {
         '-p 8188:8188': '1',
         PROVISIONING_SCRIPT: PROVISIONING_SCRIPTS[type],
@@ -329,7 +331,7 @@ export async function generateImage(
 
   // Poll history until generation is complete
   const start = Date.now();
-  const timeout = 5 * 60 * 1000;
+  const timeout = 30 * 60 * 1000;
 
   while (Date.now() - start < timeout) {
     await new Promise((resolve) => setTimeout(resolve, 3000));

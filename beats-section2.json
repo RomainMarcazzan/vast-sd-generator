@@ -1,0 +1,105 @@
+[
+  {
+    "beatId": "2.1",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nCafé terrace in Toulouse, half-finished coffees, sunlight on table, empty chairs suggesting just-vacated meeting\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.2",
+    "type": "archive",
+    "prompt": "[SCENE CONTENT]\nTyped witness statement excerpt with the line highlighted in yellow, date stamp 1997, case file margin notes\n\n[VINTAGE TREATMENT]\nPeriod-accurate archival aesthetic. Yellowed or aged paper, worn edges, print imperfections, slight fading. If photograph: analog film grain, era-appropriate color degradation 1980s to 1990s. No digital artifacts. Authentic archival document quality.\n\n[TECHNICAL]\nMacro or close-up photography of physical document or photograph. Sharp focus on text and key details. Soft vignette at edges.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "2.4",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nBurned apartment bedroom with blackened walls, bed frame charred, light streaming through broken window\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.5",
+    "type": "archive",
+    "prompt": "[SCENE CONTENT]\nPolaroid-style party photo crop with a man's side profile, blurred faces, handwritten note 'June 1997' on white border\n\n[VINTAGE TREATMENT]\nPeriod-accurate archival aesthetic. Yellowed or aged paper, worn edges, print imperfections, slight fading. If photograph: analog film grain, era-appropriate color degradation 1980s to 1990s. No digital artifacts. Authentic archival document quality.\n\n[TECHNICAL]\nMacro or close-up photography of physical document or photograph. Sharp focus on text and key details. Soft vignette at edges.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "2.6",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nSmall-town police station exterior, 1990s signage, parked patrol car, overcast sky\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.7",
+    "type": "archive",
+    "prompt": "[SCENE CONTENT]\n1990s photo of a canteen counter in a municipal building, trays, coffee urns, fluorescent light\n\n[VINTAGE TREATMENT]\nPeriod-accurate archival aesthetic. Yellowed or aged paper, worn edges, print imperfections, slight fading. If photograph: analog film grain, era-appropriate color degradation 1980s to 1990s. No digital artifacts. Authentic archival document quality.\n\n[TECHNICAL]\nMacro or close-up photography of physical document or photograph. Sharp focus on text and key details. Soft vignette at edges.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "2.8",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nToulouse Matabiau neighborhood at night, neon bar signs, alleyway leading to station, damp cobblestones\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.9",
+    "type": "archive",
+    "prompt": "[SCENE CONTENT]\nCase summary cover sheet for a 1990 murder investigation, staples, handwritten 'Reopened' stamp in red\n\n[VINTAGE TREATMENT]\nPeriod-accurate archival aesthetic. Yellowed or aged paper, worn edges, print imperfections, slight fading. If photograph: analog film grain, era-appropriate color degradation 1980s to 1990s. No digital artifacts. Authentic archival document quality.\n\n[TECHNICAL]\nMacro or close-up photography of physical document or photograph. Sharp focus on text and key details. Soft vignette at edges.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "2.10",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nDoor-to-door DNA testing setup, folding tables, forms and swab kits, community hall setting\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.12",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nClose-up of a 1990s wiretap console with audio waveforms on small green screen, headphones resting on desk\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.13",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nModest Paris studio interior aftermath, soot marks on walls, mattress on floor, window cracked\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.14",
+    "type": "archive",
+    "prompt": "[SCENE CONTENT]\nTyped interrogation transcript page with margin initials, select lines underlined, time stamps in the left column\n\n[VINTAGE TREATMENT]\nPeriod-accurate archival aesthetic. Yellowed or aged paper, worn edges, print imperfections, slight fading. If photograph: analog film grain, era-appropriate color degradation 1980s to 1990s. No digital artifacts. Authentic archival document quality.\n\n[TECHNICAL]\nMacro or close-up photography of physical document or photograph. Sharp focus on text and key details. Soft vignette at edges.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "2.15",
+    "type": "reenactment",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere, emphasize shadows and silhouetting.\n\n[SCENE CONTENT]\nStair to mezzanine at night, shadow of a man ascending, woman silhouette recoiling, faces never shown\n\n[ARTISTIC CONSTRAINTS]\nAnonymous figures only, back views, silhouettes, or cast shadows. No faces or distinguishable features visible under any circumstance. Dramatic chiaroscuro. Documentary dramatic reenactment aesthetic.\n\n[TECHNICAL]\nCinematic photorealism. Film grain texture. 16:9 framing.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, shallow depth of field, bokeh, blurry, low resolution, distorted faces, smooth plastic look, hdr, unrealistic shadows, faces, identifiable features"
+  },
+  {
+    "beatId": "2.16",
+    "type": "reenactment",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere, emphasize shadows and silhouetting.\n\n[SCENE CONTENT]\nShadowed figure lifting a flute beside a bed, candle stub flickers, bottle on floor, face obscured\n\n[ARTISTIC CONSTRAINTS]\nAnonymous figures only, back views, silhouettes, or cast shadows. No faces or distinguishable features visible under any circumstance. Dramatic chiaroscuro. Documentary dramatic reenactment aesthetic.\n\n[TECHNICAL]\nCinematic photorealism. Film grain texture. 16:9 framing.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, shallow depth of field, bokeh, blurry, low resolution, distorted faces, smooth plastic look, hdr, unrealistic shadows, faces, identifiable features"
+  },
+  {
+    "beatId": "2.18",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nInterrogation room door slightly ajar, corridor fluorescent lights, empty coffee cups on a side table\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.20",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nEvidence board with three central case cards connected by red string, one slot still empty with a question mark\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.23",
+    "type": "archive",
+    "prompt": "[SCENE CONTENT]\n1990s work rota sheet for a station buffet, female first names listed, date circled in red pen\n\n[VINTAGE TREATMENT]\nPeriod-accurate archival aesthetic. Yellowed or aged paper, worn edges, print imperfections, slight fading. If photograph: analog film grain, era-appropriate color degradation 1980s to 1990s. No digital artifacts. Authentic archival document quality.\n\n[TECHNICAL]\nMacro or close-up photography of physical document or photograph. Sharp focus on text and key details. Soft vignette at edges.",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "2.24",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nSmall studio room staged crime scene recreation: bound wrists, cloth gag, evidence tags, a champagne bottle beside a pillow\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  },
+  {
+    "beatId": "2.26",
+    "type": "ai-image",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism, handheld aesthetics, restrained film grain, natural color timing, archival texture, privacy-preserving framing with silhouettes and back-views. Color palette: #2b2f36, #1c1f24, #4a90e2, #7a5a3f, #6a8a90, #e6d5c2. Lighting: Key light ~5200K from 45° upper-left with diffusion; fill at 25-35% around 3200K for warmth; strong backlight to carve silhouettes; practicals and street spill for atmosphere. Camera: 35mm prime at f/4; handheld or shoulder rig; eye-level to slight high angle; rule-of-thirds framing with leading lines and occasional slow push-ins. Subtle archival grain with a gentle vignette.\n\n[SCENE CONTENT]\nNewsroom with ringing phones, CRT monitors, stacks of papers labeled 'Breaking', anxious energy\n\n[TECHNICAL]\nRender as documentary-style photorealism. Maintain cinematic composition and lighting throughout."
+  }
+]

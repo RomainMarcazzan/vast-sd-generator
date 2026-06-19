@@ -248,7 +248,7 @@ async function processVideoJob(jobId: string, persistentInstanceId?: string) {
       );
 
       stepStart = Date.now();
-      const instanceId = await createInstance(offer.id, 'VIDEO');
+      const instanceId = await createInstance(offer.id, 'VIDEO', 100);
       vastInstanceId = instanceId;
       console.log(`[video:${jobId}] Instance #${instanceId} created [${elapsed(stepStart)}]`);
 
@@ -373,7 +373,7 @@ async function processImg2VidJob(jobId: string, persistentInstanceId?: string) {
       );
 
       stepStart = Date.now();
-      const instanceId = await createInstance(offer.id, 'VIDEO');
+      const instanceId = await createInstance(offer.id, 'VIDEO', 100);
       vastInstanceId = instanceId;
       console.log(`[i2v:${jobId}] Instance #${instanceId} created [${elapsed(stepStart)}]`);
 

@@ -18,8 +18,8 @@ import {
 
 const app = new OpenAPIHono({ defaultHook });
 
-// Timeout auto : 30 minutes
-const INSTANCE_TIMEOUT_MINUTES = 30;
+// Timeout auto : 5 heures
+const INSTANCE_TIMEOUT_MINUTES = 300;
 
 const listInstancesRoute = createRoute({
   method: 'get',
@@ -133,7 +133,7 @@ app.openapi(createInstanceRoute, async (c) => {
   console.log(`[instance] Found offer #${offer.id}: ${offer.gpu_name}`);
 
   console.log('[instance] Creating Vast.ai instance...');
-  const vastId = await createInstance(offer.id, instanceType);
+  const vastId = await createInstance(offer.id, instanceType, minDiskGb);
   console.log(`[instance] Instance #${vastId} created`);
 
   // Sauver en DB immédiatement avec status PROVISIONING

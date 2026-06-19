@@ -1,0 +1,38 @@
+[
+  {
+    "beatId": "1.1",
+    "type": "ai-image",
+    "width": 1344,
+    "height": 768,
+    "steps": 30,
+    "cfgScale": 3.5,
+    "sampler": "euler",
+    "scheduler": "simple",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism...",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, shallow depth of field, bokeh, blurry, low resolution, distorted faces, smooth plastic look, hdr, unrealistic shadows"
+  },
+  {
+    "beatId": "1.3",
+    "type": "reenactment",
+    "width": 1344,
+    "height": 768,
+    "steps": 30,
+    "cfgScale": 3.5,
+    "sampler": "euler",
+    "scheduler": "simple",
+    "prompt": "[STYLE CONTEXT]\nDocumentary-style photorealism...",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, shallow depth of field, bokeh, blurry, low resolution, distorted faces, smooth plastic look, hdr, unrealistic shadows, faces, identifiable features"
+  },
+  {
+    "beatId": "1.4",
+    "type": "archive",
+    "width": 1344,
+    "height": 768,
+    "steps": 30,
+    "cfgScale": 3.5,
+    "sampler": "euler",
+    "scheduler": "simple",
+    "prompt": "[SCENE CONTENT]\nYellowed police inventory sheet...",
+    "negativePrompt": "cartoon, illustration, painting, 3d render, cgi, drawing, anime, oversaturated, artificial lighting, bokeh, blurry, distorted, smooth plastic look, digital artifacts, hdr, unrealistic shadows"
+  }
+]

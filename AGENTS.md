@@ -170,7 +170,7 @@ GET /instances               → poll jusqu'à RUNNING
 POST /generate (instanceId)  → génération directe
 DELETE /instances/:id        → destruction manuelle
 ```
-Auto-destruction 30 min après création. ~10x moins cher pour 10+ générations.
+Auto-destruction 5h après création. ~10x moins cher pour 10+ générations.
 
 ### MoE Architecture (Wan 2.2)
 Wan 2.2 utilise Mixture-of-Experts : chaque workflow charge **deux modèles** (high_noise + low_noise) qui opèrent sur des timesteps différents. Les modèles sont connectés via deux `KSamplerAdvanced` qui se partagent le débruitage :
@@ -187,6 +187,38 @@ Definitions dans `definitions.ts` (`createRoute()` + OpenAPI). Handlers dans `ro
 
 ### Testing
 Vitest + PostgreSQL réel (port 5433 via Docker). `app.request()` in-memory. Pas de mocks DB (sauf Vast.ai).
+
+## Batch Image Generation (`send-beats.sh`)
+
+Pour générer plusieurs images d'un coup sur une instance persistante :
+
+```bash
+# 1. Créer un JSON avec les beats (voir send-beats.sh pour le format)
+# 2. Lancer :
+./send-beats.sh <instance_id> beats.json
+# 3. Optionnel : changer l'URL du serveur
+BASE_URL=http://localhost:4000 ./send-beats.sh <instance_id> beats.json
+```
+
+Le script POST chaque beat en parallèle sur `/api/v1/generate` avec `instanceId`, et affiche `beatId → jobId`. Les jobs s'exécutent en séquence sur ComfyUI (~30-60s/image).
+
+Exemple de fichier JSON :
+```json
+[
+  {
+    "beatId": "1.5",
+    "type": "ai-image",
+    "prompt": "...",
+    "width": 1344,
+    "height": 768,
+    "steps": 30,
+    "cfgScale": 3.5,
+    "sampler": "euler",
+    "scheduler": "simple"
+  }
+]
+```
+Types de prompt types : `ai-image` (style documentaire complet), `reenactment` (silhouettes, pas de visages), `archive` (documents vieillis), `aerial` (drone). Voir `beats-example.json` pour un template complet.
 
 ## Environment Variables
 
