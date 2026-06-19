@@ -155,6 +155,7 @@ Content-Type: application/json
   "sampler": "euler",
   "scheduler": "simple",
   "seed": 42,
+  "beatId": "1.1",
   "instanceId": "{{instanceId}}"
 }
 
@@ -180,6 +181,7 @@ Content-Type: application/json
   "cfgScale": 3.5,
   "sampler": "euler",
   "scheduler": "simple",
+  "beatId": "1.1",
   "instanceId": "{{instanceId}}"
 }
 
@@ -212,6 +214,7 @@ Content-Type: application/json
   "steps": 20,
   "cfgScale": 6,
   "frames": 81,
+  "beatId": "2.1",
   "instanceId": "{{instanceId}}"
 }
 
@@ -233,6 +236,10 @@ a sunset over the ocean, gentle waves, warm colors
 Content-Disposition: form-data; name="instanceId"
 
 {{instanceId}}
+--boundary
+Content-Disposition: form-data; name="beatId"
+
+3.1
 --boundary
 Content-Disposition: form-data; name="image"; filename="source.png"
 Content-Type: image/png

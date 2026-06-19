@@ -21,6 +21,11 @@ export const generateRequestSchema = z.object({
     .optional()
     .describe('Fixed seed for reproducibility — omit for random'),
   instanceId: z.string().optional().describe('Optional persistent instance ID to reuse'),
+  beatId: z
+    .string()
+    .max(50)
+    .optional()
+    .describe('Beat identifier from script (e.g. "1.1", "2.3") — used as output filename'),
 });
 
 // --- Response schemas ---

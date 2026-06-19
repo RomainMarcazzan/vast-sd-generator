@@ -130,7 +130,7 @@ async function processJob(jobId: string, persistentInstanceId?: string) {
       mkdirSync(storagePath, { recursive: true });
     }
 
-    const filename = `${jobId}.png`;
+    const filename = job.beatId ? `${jobId}_${job.beatId}.png` : `${jobId}.png`;
     const filePath = join(storagePath, filename);
     writeFileSync(filePath, imageBuffer);
 
@@ -190,6 +190,7 @@ app.openapi(generateRoute, async (c) => {
       sampler: body.sampler,
       scheduler: body.scheduler,
       seed: body.seed ?? null,
+      beatId: body.beatId ?? null,
     },
   });
 
@@ -292,7 +293,7 @@ async function processVideoJob(jobId: string, persistentInstanceId?: string) {
     const storagePath = env.IMAGES_STORAGE_PATH;
     if (!existsSync(storagePath)) mkdirSync(storagePath, { recursive: true });
 
-    const filename = `${jobId}.mp4`;
+    const filename = job.beatId ? `${jobId}_${job.beatId}.mp4` : `${jobId}.mp4`;
     const filePath = join(storagePath, filename);
     writeFileSync(filePath, videoBuffer);
     const fileStats = statSync(filePath);
@@ -433,7 +434,7 @@ async function processImg2VidJob(jobId: string, persistentInstanceId?: string) {
     const storagePath = env.IMAGES_STORAGE_PATH;
     if (!existsSync(storagePath)) mkdirSync(storagePath, { recursive: true });
 
-    const filename = `${jobId}.mp4`;
+    const filename = job.beatId ? `${jobId}_${job.beatId}.mp4` : `${jobId}.mp4`;
     const filePath = join(storagePath, filename);
     writeFileSync(filePath, videoBuffer);
     const fileStats = statSync(filePath);
@@ -479,6 +480,7 @@ app.post('/video', async (c) => {
     seed?: unknown;
     frames?: unknown;
     instanceId?: unknown;
+    beatId?: unknown;
   };
   try {
     body = await c.req.json();
@@ -513,6 +515,7 @@ app.post('/video', async (c) => {
       scheduler: typeof body.scheduler === 'string' ? body.scheduler : 'simple',
       seed: body.seed != null ? Number(body.seed) : null,
       frames,
+      beatId: typeof body.beatId === 'string' ? body.beatId : null,
       mediaType: 'VIDEO',
     },
   });
@@ -568,6 +571,7 @@ app.post('/video/img2vid', async (c) => {
   const cfgScale = Number((formData['cfgScale'] as string) ?? 6);
   const frames = Number((formData['frames'] as string) ?? 81);
   const seed = formData['seed'] ? Number(formData['seed']) : null;
+  const beatId = formData['beatId'] as string | undefined;
 
   const job = await prisma.generationJob.create({
     data: {
@@ -581,6 +585,7 @@ app.post('/video/img2vid', async (c) => {
       scheduler: (formData['scheduler'] as string) ?? 'simple',
       seed,
       frames,
+      beatId: beatId?.trim() || null,
       sourceImagePath,
       mediaType: 'VIDEO',
     },

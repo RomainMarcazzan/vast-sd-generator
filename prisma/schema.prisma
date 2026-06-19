@@ -27,6 +27,7 @@ model GenerationJob {
   frames         Int            @default(81)  // video frames (VIDEO jobs)
   denoiseStrength Float?        // null = txt2img, set for img2img
   sourceImagePath String?       // source image path for img2img
+  beatId         String?        // beat identifier from script (e.g. "1.1", "2.3")
   mediaType      MediaType      @default(IMAGE)
   status         JobStatus      @default(PENDING)
   vastInstanceId String?
