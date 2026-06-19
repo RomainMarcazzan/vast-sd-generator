@@ -5,7 +5,6 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { env } from './config/env.js';
 import { defaultHook, onErrorHandler } from './lib/error-handler.js';
-import { metricsHandler, metricsMiddleware } from './lib/metrics.js';
 import generate from './routes/generate/index.js';
 import images from './routes/images/index.js';
 import instances from './routes/instances/index.js';
@@ -59,15 +58,6 @@ app.onError(onErrorHandler);
 
 // Health check endpoint
 app.get('/health', (c) => c.text('OK', 200));
-
-// Metrics middleware - collecte les métriques pour toutes les routes
-app.use('*', metricsMiddleware);
-
-// Metrics endpoint pour Prometheus/VictoriaMetrics (non documenté dans Swagger)
-app.get('/metrics', async (c) => {
-  const response = await metricsHandler();
-  return c.newResponse(response.body, response);
-});
 
 // API routes
 app.route('/api/v1/generate', generate);

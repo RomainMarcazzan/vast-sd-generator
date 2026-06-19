@@ -22,7 +22,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 This is an **AI asset generation API** built on top of the Hono + Prisma + PostgreSQL stack.
 
-The RPi 3B+ acts as an **orchestrator and file server** — heavy work (image/video inference) is offloaded to GPU instances rented on-demand via the **Vast.ai API**. Generated files are stored locally on the USB drive.
+The API server acts as an **orchestrator and file server** — heavy work (image/video inference) is offloaded to GPU instances rented on-demand via the **Vast.ai API**. Generated files are stored locally on disk under `IMAGES_STORAGE_PATH`.
 
 ```
 POST /api/v1/generate              → { jobId }  txt2img (async, Qwen Image Max 2512)
@@ -42,10 +42,10 @@ DELETE /api/v1/instances/:id       → destroy instance
 
 ## Infrastructure
 
-- **RPi 3B+** at `rpi.code-booking.fr` — Hona API + PostgreSQL in Docker
-- **USB drive** (~45GB free) — images/videos stored under `IMAGES_STORAGE_PATH`
+- **Server** at `code-booking.fr` — API + PostgreSQL in Docker
+- **Images/videos** stored on disk under `IMAGES_STORAGE_PATH`
 - **Vast.ai** — GPU instances on demand ($0.15-0.90/h, always destroy after use)
-- **Nginx** on RPi — reverse proxy with HTTPS
+- **Nginx** — reverse proxy with HTTPS
 
 ## Common Commands
 
@@ -71,7 +71,6 @@ src/
 │   ├── vast.ts                 # Vast.ai + ComfyUI client (Qwen + Wan 2.2 workflows)
 │   ├── prisma.ts
 │   ├── error-handler.ts
-│   └── metrics.ts
 ├── schemas/generation.ts       # Zod + OpenAPI schemas
 └── routes/
     ├── generate/               # POST /api/v1/generate (+ /video, /video/img2vid)
@@ -202,13 +201,7 @@ SWAGGER_USER=admin
 SWAGGER_PASSWORD=admin
 ```
 
-## Docker & Deployment
 
-- `docker-compose.yml` — dev : PostgreSQL seul
-- `docker-compose.prod.yml` — prod : API + PostgreSQL + VictoriaMetrics + Grafana
-- Volume prod obligatoire : `/data/images:/data/images`
-- CI/CD : push `main` → GitHub Actions → SSH RPi → `git pull` + `docker compose up --build`
-- RPi SSH : `ssh -p 2222 romain@rpi.code-booking.fr`
 
 ## Roadmap — Intégration video-platform
 
